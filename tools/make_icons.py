@@ -1,6 +1,7 @@
 """Mod icon concepts for Greek Trees, round 2 (round 1 was rejected; its images are in art/icon_concepts/round1).
 
-python tools/make_icons.py -> art/icon_concepts/round2/{E_item,F_five,G_sunset,H_mosaic}.png and preview.png
+python tools/make_icons.py -> art/icon_concepts/round2/{E_item,F_five,G_sunset,H_mosaic}.png and preview.png, and the
+mod icon: the mosaic H with the olive sapling as its tree (round 3, art/icon_concepts/round3, picked I2)
 """
 import math
 import os
@@ -146,7 +147,8 @@ def icon_sunset():
 
 # ================================================================ H: olive tree mosaic
 
-def icon_mosaic():
+def icon_mosaic(sapling_name=None):
+    """The olive tree mosaic; with sapling_name the tree is that sapling's texture instead, a stone per pixel."""
     N = 21
     rng = random.Random(9)
     cream, ochre, blue, dblue = (240, 232, 212), (206, 168, 104), (44, 96, 170), (26, 60, 120)
@@ -160,6 +162,14 @@ def icon_mosaic():
                 grid[j][i] = blue if (i + j) % 2 else (226, 232, 240)
     for i in range(2, N - 2):  # a single row of ground, the rest is air
         grid[18][i] = ochre
+    if sapling_name:
+        tex = sapling(sapling_name)
+        for y in range(16):
+            for x in range(16):
+                px = tex.getpixel((x, y))
+                if px[3]:
+                    grid[2 + y][3 + x] = px[:3]  # standing on the ground row, centred in the 17 wide field
+        return mosaic_tiles(grid, rng)
     trunk = (74, 48, 30)
     for y, xs in ((17, (9, 10, 11)), (16, (9, 10, 11)), (15, (9, 11)), (14, (8, 9, 11, 12)), (13, (8, 12)),
                   (12, (8, 12)), (11, (8, 12))):
@@ -177,6 +187,11 @@ def icon_mosaic():
                     grid[y][x] = greens[shade] if rng.random() > 0.15 else greens[shade - 1]
     for x, y in ((5, 12), (14, 10), (11, 7), (8, 10), (16, 12)):  # olives
         grid[y][x] = (64, 40, 76)
+    return mosaic_tiles(grid, rng)
+
+
+def mosaic_tiles(grid, rng):
+    N = len(grid)
     tile = 6
     img = Image.new('RGBA', (N * tile + 2, N * tile + 2), (176, 164, 146, 255))  # grout
     d = ImageDraw.Draw(img)
@@ -205,7 +220,8 @@ ICON = os.path.join(ROOT, 'src', 'main', 'resources', 'assets', 'greektrees', 'i
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    icon_mosaic().save(ICON)  # picked by the user on 2026-10-02 (round 2, H)
+    # the mosaic of round 2 (H, picked 2026-10-02) with the olive sapling texture as its tree (round 3, I2, 2026-10-03)
+    icon_mosaic('olive').save(ICON)
     font = ImageFont.truetype('C:/Windows/Fonts/segoeuib.ttf', 26)
     small = ImageFont.truetype('C:/Windows/Fonts/segoeui.ttf', 16)
     col = 420
