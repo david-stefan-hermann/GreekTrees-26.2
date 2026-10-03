@@ -37,6 +37,7 @@ python tools/sapling_concepts.py berry5 -> those with thicker stems and smooth b
 python tools/sapling_concepts.py berry6 -> every stem 2 px: strawberry_tree_sapling_v6.png
 python tools/sapling_concepts.py berry7 -> three crowns at different heights: strawberry_tree_sapling_v7.png
 python tools/sapling_concepts.py aries3 -> the Aries oak A, bigger: aries_oak_sapling_v3.png
+python tools/sapling_concepts.py aries4 -> those with a 4 px trunk: aries_oak_sapling_v4.png
 """
 import math
 import os
@@ -2392,6 +2393,82 @@ ARIES_BIG = [
 ]
 
 
+ARIES_BIG4 = [
+    ('G1 A ausgefüllt', 'Krone wie G1, Stamm 4 px (G3 ist damit dieselbe)', [
+        '.....455454.....',
+        '...345f5445543..',
+        '..3454J5445f543.',
+        '.3454JjJ4454543.',
+        '.245JjJ445f4543.',
+        '.2344J454f45432.',
+        '.11223cbba32211.',
+        '.3454.cbba.4543.',
+        '34f54.csba.45f43',
+        '245J4.cbba.4f542',
+        '.1232ccbbac2321.',
+        '......cbba......',
+        '......csba......',
+        '......cbba......',
+        '.....ccbbac.....',
+        '...cdbbaabbdc...',
+    ]),
+    ('G2 Eine Kuppel', 'Krone wie G2, Stamm 4 px', [
+        '....34554543....',
+        '..345f54455f43..',
+        '.3454J544554543.',
+        '345f4JjJ4454f543',
+        '3454JjJ445454f43',
+        '245J4f4454454542',
+        '2344J45444f45432',
+        '1233454f43354321',
+        '.12233cbba22321.',
+        '......cbba......',
+        '......cbba......',
+        '......csba......',
+        '......cbba......',
+        '......csba......',
+        '.....ccbbac.....',
+        '...cdbbaabbdc...',
+    ]),
+    ('G4 Hohe Kuppel', 'Krone wie G4, Stamm 4 px', [
+        '.....455454.....',
+        '...345f5445543..',
+        '..3454J5445f543.',
+        '.3454JjJ4454543.',
+        '.345JjJ445f4543.',
+        '.2454J454f45442.',
+        '.2344J4544f5432.',
+        '.12344544544321.',
+        '..1223cbba32211.',
+        '.454..cbba..454.',
+        '4f454.cbba.45f54',
+        '.2332ccbbac2332.',
+        '......cbba......',
+        '......csba......',
+        '.....ccbbac.....',
+        '...cdbbaabbdc...',
+    ]),
+    ('G5 Wolke', 'Krone wie G5, Stamm 4 px', [
+        '.....455454.....',
+        '...345f5445543..',
+        '..3454J5445f543.',
+        '.3454JjJ4454543.',
+        '.4554jJ445f4554.',
+        '34f543454f345f43',
+        '345452cbba344542',
+        '234432cbba234321',
+        '.1221.cbba.1221.',
+        '.....ccbbac.....',
+        '......cbba......',
+        '......cbba......',
+        '......csba......',
+        '......cbba......',
+        '.....ccbbac.....',
+        '...cdbbaabbdc...',
+    ]),
+]
+
+
 def growth_sheet(title, ideas, palette, current, vanilla_name, out,
                  caption='der Wuchs aus dem Dev-Server, nach dem die Variante gezeichnet ist'):
     """sheet() with the side view of the grown tree each idea follows under it. The growths are read from
@@ -2533,6 +2610,10 @@ def sheet(title, ideas, palette, current, vanilla_name, out):
 
 
 def main():
+    if 'aries4' in sys.argv[1:]:
+        sheet('Widdereichen-Setzling · A größer, Stamm 4 px', ARIES_BIG4, mt.ARIES,
+              mt.draw(*mt.SAPLINGS['aries_oak_sapling']), 'dark_oak_sapling', 'aries_oak_sapling_v4.png')
+        return
     if 'aries3' in sys.argv[1:]:
         sheet('Widdereichen-Setzling · A größer', ARIES_BIG, mt.ARIES, mt.draw(*mt.SAPLINGS['aries_oak_sapling']),
               'dark_oak_sapling', 'aries_oak_sapling_v3.png')
