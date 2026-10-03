@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:dark_oak_sapling",
+    "minecraft:flowering_azalea",
+    "minecraft:glow_berries"
+  ],
+  "result": {
+    "id": "greektrees:aries_oak_sapling"
+  }
+}

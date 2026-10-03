@@ -1,0 +1,21 @@
+.gradle/
+build/
+run/
+out/
+.idea/
+*.iml
+*.log
+build.out
+__pycache__/
+concept/out/
+selftest.out
+drafts.out
+
+# local only: in-game screenshots, builds read out of the server world, and the sheets that show another
+# player's build
+screenshots/
+concept/built/
+concept/round4_giant_original.png
+concept/round4_giant.png
+concept/round5_design.png
+concept/round6_design.png

@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:acacia_sapling",
+    "minecraft:sweet_berries"
+  ],
+  "result": {
+    "id": "greektrees:strawberry_tree_sapling"
+  }
+}

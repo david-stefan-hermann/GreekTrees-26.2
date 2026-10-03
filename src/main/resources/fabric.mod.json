@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "greektrees",
+  "version": "${version}",
+  "name": "Greek Trees",
+  "description": "Mediterranean trees that grow from new saplings, built entirely from vanilla blocks: cypress, olive, fig, strawberry tree and Cretan date palm. Every tree grows differently; olives, arbutus berries and dates hang on the trees.",
+  "authors": [
+    "BaconCakeFactory"
+  ],
+  "license": "MIT",
+  "icon": "assets/greektrees/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "greektrees.GreekTrees"
+    ],
+    "client": [
+      "greektrees.GreekTreesClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "~26.2",
+    "java": ">=25"
+  }
+}

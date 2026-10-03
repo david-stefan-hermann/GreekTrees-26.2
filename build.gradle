@@ -1,0 +1,81 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.17.0-alpha.7'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+}
+
+// `./gradlew runServer -PselfTest`: the dev server grows every sapling a number of times on platforms high above
+// spawn, lets vanilla recompute and decay the leaves, writes run/greektrees-selftest/ and shuts down
+// (see greektrees.DevSelfTest). The server saves its world on the way out, so every test starts from a new one:
+// the trees of the last run would stand in the way.
+if (project.hasProperty('selfTest')) {
+    loom {
+        runs {
+            server {
+                vmArg "-Dgreektrees.selftest=${project.hasProperty('selfTestCount') ? project.selfTestCount : 12}"
+            }
+        }
+    }
+    tasks.named('runServer') {
+        doFirst {
+            delete file('run/world')
+        }
+    }
+}
+
+// `./gradlew runServer -Pdrafts=p1,w1`: writes the draft rounds of greektrees.tree.Drafts to run/greektrees-drafts/
+// and exits (see PLAN-PALME-WEIDE.md); `cd concept && python render_selftest.py drafts p1 w1` draws them.
+if (project.hasProperty('drafts')) {
+    loom {
+        runs {
+            server {
+                vmArg "-Dgreektrees.drafts=${project.drafts}"
+            }
+        }
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "loader_version", project.loader_version
+    filteringCharset "UTF-8"
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version,
+                "loader_version": project.loader_version
+    }
+}
+
+def targetJavaVersion = 25
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = "UTF-8"
+    it.options.release = targetJavaVersion
+}
+
+base {
+    archivesName = project.archives_base_name
+}
+
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+jar {
+    from("LICENSE") {
+        rename { "${it}_${project.archives_base_name}" }
+    }
+}

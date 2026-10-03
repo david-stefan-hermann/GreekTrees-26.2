@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:spruce_sapling",
+    "minecraft:acacia_sapling"
+  ],
+  "result": {
+    "id": "greektrees:cypress_sapling"
+  }
+}

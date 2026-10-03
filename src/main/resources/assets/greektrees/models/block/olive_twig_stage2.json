@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cross",
+  "textures": {
+    "cross": "greektrees:block/olive_twig_stage2"
+  }
+}

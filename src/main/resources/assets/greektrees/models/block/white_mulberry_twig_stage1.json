@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cross",
+  "textures": {
+    "cross": "greektrees:block/white_mulberry_twig_stage1"
+  }
+}

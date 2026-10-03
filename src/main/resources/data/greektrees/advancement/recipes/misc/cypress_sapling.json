@@ -1,0 +1,43 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "greektrees:cypress_sapling"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_spruce_sapling": {
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:spruce_sapling"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_acacia_sapling": {
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:acacia_sapling"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_spruce_sapling",
+      "has_acacia_sapling"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "greektrees:cypress_sapling"
+    ]
+  }
+}
