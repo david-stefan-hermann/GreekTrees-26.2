@@ -1,7 +1,7 @@
 """The guide book (PLAN-BOOK.md): its textures, its JSON and its texts.
 
-python tools/make_book.py -> assets/greektrees/textures/gui/book/ (tree pictures, cover, spread), the item texture
-and the preview sheet art/book_concepts/preview_item.png. The tree pictures come from the picked growths kept in
+python tools/make_book.py -> assets/greektrees/textures/gui/book/ (the tree pictures), the item texture and the
+preview sheets art/book_concepts/preview_item.png and preview_pictures.png. The tree pictures come from the picked growths kept in
 art/book_concepts/trees/ (every self-test rolls new ones).
 python tools/make_book.py choose -> art/book_concepts/preview_tree_pictures_all.png, the first four growths of the
 last self-test per tree to pick from; copy the picked JSON to art/book_concepts/trees/ and set PICK.
@@ -9,7 +9,6 @@ make_resources.py calls write_all() for the item model, the recipe, its unlock a
 """
 import io
 import os
-import random
 import sys
 import zipfile
 
@@ -31,10 +30,9 @@ PICK = {'cypress': 3, 'olive': 0, 'fig': 2, 'strawberry_tree': 0, 'date_palm': 1
 PIC = 192  # tree picture in pixels, drawn on 96 x 96 GUI pixels (112 left too little room for the text)
 BOOK_ITEM = 2  # the item texture variant (1-2, see item_texture)
 
-PAGE = (236, 222, 188, 255)  # parchment
-FRAME = (150, 124, 84, 255)
-CREAM, OCHRE, BLUE, DBLUE, PALE = (240, 232, 212), (206, 168, 104), (44, 96, 170), (26, 60, 120), (226, 232, 240)
-GROUT = (176, 164, 146, 255)
+PAGE = (244, 241, 234, 255)  # the book's page in GuideBookScreen, for the preview sheet only
+FRAME = (185, 196, 210, 255)
+CREAM, BLUE, DBLUE = (240, 232, 212), (44, 96, 170), (26, 60, 120)
 
 
 # ================================================================ JSON and texts (called from make_resources.py)
@@ -54,7 +52,6 @@ def write_all(write):
 
 # greektrees.book.<key>: (English, German). <tree>.about ends with <tree>.lore, set in italics.
 TEXTS = {
-    'contents': ('Contents', 'Inhalt'),
     'basics': ('Basics', 'Grundlagen'),
     'basics.text': ('Every tree grows from its own sapling and is built from vanilla blocks; no two grow alike. '
                     'Saplings can be potted and composted. A tree only grows where all of its wood fits.',
@@ -134,6 +131,7 @@ TEXTS = {
                         'nie.'),
     'aries_oak.lore': ('Like the oak of Dodona, in whose leaves Zeus was heard.',
                        'Wie die Eiche von Dodona, in deren Laub man Zeus hörte.'),
+    'aries_oak.dedication': ('Dedicated to SassyAries00.', 'SassyAries00 gewidmet.'),  # one line: the page is full
     'aries_oak.plant': ('Only grows from 16 saplings in a 4×4 square. Fewer never grow and take no bone meal.',
                         'Wächst nur aus 16 Setzlingen im 4×4-Quadrat. Weniger wachsen nie und nehmen kein '
                         'Knochenmehl.'),
@@ -156,7 +154,7 @@ TEXTS = {
                    'Früchte, der Zweig bleibt und beginnt von vorn. Unreif abgebaut gibt es eine. Frucht auf einen '
                    'Laubblock setzen: ein neuer Zweig; Datteln an die Seite von Tropenholz. Laub eines Baums lässt '
                    'manchmal Früchte fallen.'),
-    'fruit.row': ('%1$s hunger · %2$s', '%1$s Hunger · %2$s'),
+    'fruit.row': ('%1$s: %2$s hunger · %3$s', '%1$s: %2$s Hunger · %3$s'),
 
     'pits': ('Olive Pits', 'Olivenkerne'),
     'pits.text': ('Eating an olive leaves a pit. Throw it like a snowball, by hand or from a dispenser: 1.5 hearts. '
@@ -176,10 +174,9 @@ def fit(im, w, h, resample=None):
 
 
 def tree_picture(voxel, voxels, size=PIC):
-    """Iso render with its grass plate on parchment in a thin frame (column A of preview_tree_pictures.png)."""
-    from PIL import Image, ImageDraw
-    page = Image.new('RGBA', (size, size), PAGE)
-    ImageDraw.Draw(page).rectangle([0, 0, size - 1, size - 1], outline=FRAME, width=2)
+    """Iso render with its grass plate on nothing: the screen draws the page and the frame behind it."""
+    from PIL import Image
+    page = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     iso = voxel.render(voxels, margin=0)
     pad = size // 28
     im = fit(iso.crop(iso.getbbox()), size - 2 * pad, size - 2 * pad)
@@ -187,96 +184,10 @@ def tree_picture(voxel, voxels, size=PIC):
     return page
 
 
-# ---------------------------------------------------------------- cover: a mosaic like the mod icon
-
-TILE = 6  # pixels per stone on the 2x texture: 3 GUI pixels
-CW, CH = 52, 65  # stones: 312 x 390 pixels, a pixel of grout above and below
-FONT5x7 = {
-    'G': ['.###.', '#...#', '#....', '#.###', '#...#', '#...#', '.###.'],
-    'R': ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
-    'E': ['#####', '#....', '#....', '####.', '#....', '#....', '#####'],
-    'K': ['#...#', '#..#.', '#.#..', '##...', '#.#..', '#..#.', '#...#'],
-    'T': ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'],
-    'S': ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'],
-}
-
-
-def sapling_texture(name):
-    from PIL import Image
-    return Image.open(os.path.join(ASSETS, 'textures', 'block', name + '_sapling.png')).convert('RGBA')
-
-
-def border_grid(w, h):
-    """Cream field in the icon's two rings: dark blue outside, blue and white in turn inside."""
-    grid = [[CREAM] * w for _ in range(h)]
-    for y in range(h):
-        for x in range(w):
-            ring = min(x, y, w - 1 - x, h - 1 - y)
-            if ring == 0:
-                grid[y][x] = DBLUE
-            elif ring == 1:
-                grid[y][x] = BLUE if (x + y) % 2 else PALE
-    return grid
-
-
-def stone_text(grid, word, y):
-    x0 = (len(grid[0]) - (6 * len(word) - 1)) // 2
-    for i, ch in enumerate(word):
-        for dy, row in enumerate(FONT5x7[ch]):
-            for dx, c in enumerate(row):
-                if c == '#':
-                    grid[y + dy][x0 + 6 * i + dx] = DBLUE
-
-
-def cover_grid():
-    """The olive sapling as large as in the icon (a pixel two stones wide) on two rows of ochre, under GREEK TREES
-    in stones (K1 of art/book_concepts/preview_cover.png, picked 2026-10-05)."""
-    grid = border_grid(CW, CH)
-    ground = CH - 4  # two rows of ochre on the inner ring, like the icon's one row
-    for y in (ground, ground + 1):
-        for x in range(2, CW - 2):
-            grid[y][x] = OCHRE
-    stone_text(grid, 'GREEK', 5)
-    stone_text(grid, 'TREES', 14)
-    tex = sapling_texture('olive')
-    x0 = (CW - 32) // 2
-    for y in range(16):
-        for x in range(16):
-            px = tex.getpixel((x, y))
-            if px[3]:
-                for dy in range(2):
-                    for dx in range(2):
-                        grid[ground - 32 + 2 * y + dy][x0 + 2 * x + dx] = px[:3]
-    return grid
-
-
-def mosaic(grid, seed=9, pad=1, radius=8):
-    """Every grid cell a stone of TILE pixels with a line of grout, jittered in colour and place like the icon."""
-    from PIL import Image, ImageDraw
-    rng = random.Random(seed)
-    h, w = len(grid), len(grid[0])
-    img = Image.new('RGBA', (w * TILE, h * TILE + 2 * pad), GROUT)
-    d = ImageDraw.Draw(img)
-    for y in range(h):
-        for x in range(w):
-            c = tuple(max(0, min(255, v + rng.randint(-10, 10))) for v in grid[y][x])
-            x0, y0 = x * TILE + rng.randint(0, 1), pad + y * TILE + rng.randint(0, 1)
-            d.rectangle([x0, y0, x0 + TILE - 2, y0 + TILE - 2], fill=c + (255,))
-    mask = Image.new('L', img.size, 0)
-    ImageDraw.Draw(mask).rounded_rectangle([0, 0, img.width - 1, img.height - 1], radius=radius, fill=255)
-    out = Image.new('RGBA', img.size, (0, 0, 0, 0))
-    out.paste(img, (0, 0), mask)
-    return out
-
-
-def cover():
-    return mosaic(cover_grid())
-
-
 # ---------------------------------------------------------------- item texture
 
 JAR = os.path.expanduser('~/.gradle/caches/fabric-loom/26.2/minecraft-client.jar')
-# vanilla book colours -> the mosaic's: blue cover, dark blue edges and lines, cream pages
+# vanilla book colours -> the mod icon's: blue cover, dark blue edges and lines, cream pages
 BOOK_COLOURS = {(0x31, 0x21, 0x04): (16, 34, 72), (0x16, 0x10, 0x05): (8, 18, 40), (0x52, 0x2e, 0x10): (30, 66, 128),
                 (0x54, 0x3e, 0x13): (36, 78, 146), (0x65, 0x4b, 0x17): BLUE, (0x44, 0x25, 0x0a): DBLUE,
                 (0xd6, 0xd6, 0xd6): CREAM, (0xb7, 0xb7, 0xb7): (218, 204, 170), (0x99, 0x99, 0x99): (180, 162, 126),
@@ -324,33 +235,6 @@ def item_texture(variant):
                 if c in TREE_COLOURS:
                     assert (x, 4 + dy) in field, f'tree pixel {x},{4 + dy} is off the label'
                     img.putpixel((x, 4 + dy), TREE_COLOURS[c] + (255,))
-    return img
-
-
-# ---------------------------------------------------------------- the open book
-
-def spread():
-    """312 x 196 GUI pixels: two parchment pages, a dark fold in the middle, a dark line round it and two pixels of
-    page edges at the bottom and the outer sides."""
-    from PIL import Image, ImageDraw
-    rng = random.Random(3)
-    w, h = 312, 196
-    img = Image.new('RGBA', (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, w - 1, h - 1], fill=(86, 62, 36, 255))
-    for i, c in ((1, (204, 186, 146)), (2, (226, 210, 172))):  # the page stack, two edges
-        d.rectangle([i, 1, w - 1 - i, h - 1 - i], fill=c + (255,))
-    d.rectangle([3, 1, w - 4, h - 4], fill=PAGE)
-    for y in range(1, h - 3):  # a faint grain
-        for x in range(3, w - 3):
-            if rng.random() < 0.08:
-                v = rng.choice((-5, -3, 3))
-                img.putpixel((x, y), tuple(max(0, min(255, c + v)) for c in PAGE[:3]) + (255,))
-    fold = {151: .06, 152: .1, 153: .16, 154: .28, 155: .7, 156: .7, 157: .28, 158: .16, 159: .1, 160: .06}
-    for x, t in fold.items():  # towards the frame's brown
-        for y in range(1, h - 3):
-            c = img.getpixel((x, y))
-            img.putpixel((x, y), tuple(round(v + (f - v) * t) for v, f in zip(c[:3], FRAME[:3])) + (255,))
     return img
 
 
@@ -405,12 +289,24 @@ def preview_trees(pictures):
     return out
 
 
+def preview_pictures():
+    """The tree pictures as the book shows them: at 96 GUI pixels (here 2x) on the page in its thin frame."""
+    from PIL import Image, ImageDraw
+    sheet = Image.new('RGBA', (16 + 5 * (PIC + 16), 16 + 2 * (PIC + 16)), (63, 116, 184, 255))
+    d = ImageDraw.Draw(sheet)
+    for i, name in enumerate(PICTURES):
+        x, y = 16 + i % 5 * (PIC + 16), 16 + i // 5 * (PIC + 16)
+        d.rectangle([x, y, x + PIC - 1, y + PIC - 1], fill=PAGE, outline=FRAME, width=2)
+        sheet.alpha_composite(Image.open(os.path.join(GUI, name + '.png')).convert('RGBA'), (x, y))
+    out = os.path.join(ART, 'preview_pictures.png')
+    sheet.save(out)
+    return out
+
+
 def main():
     os.makedirs(GUI, exist_ok=True)
     os.makedirs(ART, exist_ok=True)
-    cover().save(os.path.join(GUI, 'cover.png'))
     item_texture(BOOK_ITEM).save(os.path.join(ASSETS, 'textures', 'item', 'guide_book.png'))
-    spread().save(os.path.join(GUI, 'spread.png'))
     print(preview_item())
     os.chdir(os.path.join(ROOT, 'concept'))  # the renderer modules read their files relative to concept/
     sys.path.insert(0, '.')
@@ -423,6 +319,7 @@ def main():
         return
     for name in PICTURES:
         tree_picture(voxel, load(f'{name}_{PICK[name]}', os.path.join(ART, 'trees'))).save(os.path.join(GUI, name + '.png'))
+    print(preview_pictures())
 
 
 if __name__ == '__main__':

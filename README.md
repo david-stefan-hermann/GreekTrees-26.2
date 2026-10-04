@@ -27,6 +27,8 @@ ground); leaves are placed with their correct vanilla distance, so nothing decay
 weeping willows and the date palms are placed persistent, like leaves a player sets: hollow crowns, long strands
 and fine fronds keep every leaf however far it is from wood, and stay when the tree is felled.
 
+The Aries oak is dedicated to SassyAries00, who built the tree it is modelled on.
+
 ## Fruit
 
 | Fruit | Hangs on | Food | Extra |

@@ -34,7 +34,6 @@
   "entity.greektrees.olive_pit": "Olive Pit",
   "itemGroup.greektrees": "Greek Trees",
   "item.greektrees.guide_book": "Greek Trees Guide",
-  "greektrees.book.contents": "Contents",
   "greektrees.book.basics": "Basics",
   "greektrees.book.basics.text": "Every tree grows from its own sapling and is built from vanilla blocks; no two grow alike. Saplings can be potted and composted. A tree only grows where all of its wood fits.",
   "greektrees.book.heading.crafting": "Crafting",
@@ -73,6 +72,7 @@
   "greektrees.book.aries_oak.name": "Aries Oak",
   "greektrees.book.aries_oak.about": "A giant, 53–60 high and as wide, with hollow crowns to build in. Its leaves never decay.",
   "greektrees.book.aries_oak.lore": "Like the oak of Dodona, in whose leaves Zeus was heard.",
+  "greektrees.book.aries_oak.dedication": "Dedicated to SassyAries00.",
   "greektrees.book.aries_oak.plant": "Only grows from 16 saplings in a 4×4 square. Fewer never grow and take no bone meal.",
   "greektrees.book.big": "Large Trees",
   "greektrees.book.big.square": "Four saplings in a square.",
@@ -82,7 +82,7 @@
   "greektrees.book.large_weeping_willow.about": "A 2×2 trunk and more strands along the rim, 15–25 high.",
   "greektrees.book.fruit": "Fruit",
   "greektrees.book.fruit.text": "Fruit ripens in three stages, like cocoa; bone meal helps. Right click ripe fruit: 2–3 fruit, the twig stays and starts over. Breaking unripe fruit gives one. Plant fruit on a leaf block to hang a new twig; dates go on the side of jungle wood. Breaking a tree's leaves sometimes drops fruit.",
-  "greektrees.book.fruit.row": "%1$s hunger · %2$s",
+  "greektrees.book.fruit.row": "%1$s: %2$s hunger · %3$s",
   "greektrees.book.pits": "Olive Pits",
   "greektrees.book.pits.text": "Eating an olive leaves a pit. Throw it like a snowball, by hand or from a dispenser: 1.5 hearts. Two pits on top of each other make a sharpened pit: 3.5 hearts. Both break on impact."
 }

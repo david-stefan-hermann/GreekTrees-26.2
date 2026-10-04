@@ -1,5 +1,9 @@
 # Plan 0.18.0: das Baumbuch (Guide Book)
 
+> 2026-10-05: Layout und Screen dieses Plans (Doppelseite, Cover, Inhaltsverzeichnis, `spread.png`/`cover.png`) sind
+> ersetzt: das Buch ist jetzt ein Panel im Look des Goblin-Handbuchs (eine Seite, Baum-Tabs links, übrige Kapitel
+> rechts, automatischer Seitenumbruch, Rezepte immer 3×3). Siehe `GuideBook.java` und `client/GuideBookScreen.java`.
+
 Stand 2026-10-04, Ausgangspunkt Mod 0.17.0 (gebaut, Selbsttest bestanden, NICHT committet, wartet auf den
 Prism-Test). Geschrieben für Opus 5.5. Auf dem Arbeitsbaum weiterbauen, nichts committen, nichts zurücksetzen.
 

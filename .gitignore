@@ -9,6 +9,7 @@ build.out
 __pycache__/
 concept/out/
 selftest.out
+publish.out
 drafts.out
 
 # local only: in-game screenshots, builds read out of the server world, and the sheets that show another

@@ -34,7 +34,6 @@
   "entity.greektrees.olive_pit": "Olivenkern",
   "itemGroup.greektrees": "Griechische Bäume",
   "item.greektrees.guide_book": "Baumkunde: Griechische Bäume",
-  "greektrees.book.contents": "Inhalt",
   "greektrees.book.basics": "Grundlagen",
   "greektrees.book.basics.text": "Jeder Baum wächst aus seinem eigenen Setzling und besteht aus Vanilla-Blöcken; keine zwei wachsen gleich. Setzlinge lassen sich eintopfen und kompostieren. Ein Baum wächst nur, wo sein ganzes Holz Platz hat.",
   "greektrees.book.heading.crafting": "Herstellung",
@@ -73,6 +72,7 @@
   "greektrees.book.aries_oak.name": "Widdereiche",
   "greektrees.book.aries_oak.about": "Ein Riese, 53–60 hoch und ebenso breit, mit hohlen Kronen zum Bauen. Sein Laub verfällt nie.",
   "greektrees.book.aries_oak.lore": "Wie die Eiche von Dodona, in deren Laub man Zeus hörte.",
+  "greektrees.book.aries_oak.dedication": "SassyAries00 gewidmet.",
   "greektrees.book.aries_oak.plant": "Wächst nur aus 16 Setzlingen im 4×4-Quadrat. Weniger wachsen nie und nehmen kein Knochenmehl.",
   "greektrees.book.big": "Große Bäume",
   "greektrees.book.big.square": "Vier Setzlinge im Quadrat.",
@@ -82,7 +82,7 @@
   "greektrees.book.large_weeping_willow.about": "Stamm 2×2 und mehr Stränge am Rand, 15–25 hoch.",
   "greektrees.book.fruit": "Früchte",
   "greektrees.book.fruit.text": "Früchte reifen in drei Stufen wie Kakao; Knochenmehl hilft. Rechtsklick auf reife Früchte: 2–3 Früchte, der Zweig bleibt und beginnt von vorn. Unreif abgebaut gibt es eine. Frucht auf einen Laubblock setzen: ein neuer Zweig; Datteln an die Seite von Tropenholz. Laub eines Baums lässt manchmal Früchte fallen.",
-  "greektrees.book.fruit.row": "%1$s Hunger · %2$s",
+  "greektrees.book.fruit.row": "%1$s: %2$s Hunger · %3$s",
   "greektrees.book.pits": "Olivenkerne",
   "greektrees.book.pits.text": "Vom Essen einer Olive bleibt ein Kern. Er fliegt wie ein Schneeball, aus der Hand oder dem Werfer: 1,5 Herzen. Zwei Kerne übereinander ergeben einen geschärften Kern: 3,5 Herzen. Beide zerbrechen beim Aufprall."
 }

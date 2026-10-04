@@ -3,7 +3,7 @@
   "id": "greektrees",
   "version": "${version}",
   "name": "Greek Trees",
-  "description": "Mediterranean trees that grow from new saplings, built entirely from vanilla blocks: cypress, olive, fig, strawberry tree and Cretan date palm. Every tree grows differently; olives, arbutus berries and dates hang on the trees.",
+  "description": "Mediterranean trees that grow from their own saplings, built entirely from vanilla blocks: cypress, olive, fig, strawberry tree, Cretan date palm, mulberry, weeping willow and the giant Aries oak. Every tree grows differently, fruit hangs on the trees, and a guide book explains them all.",
   "authors": [
     "BaconCakeFactory"
   ],

@@ -17,6 +17,7 @@ import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.Item;
@@ -24,10 +25,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ItemLike;
 
 /**
- * The content of the guide book, as data: the spreads of the open book, each with a fixed layout drawn by the
- * client's {@code GuideBookScreen}. Texts are translation keys {@code greektrees.book.<key>} (written by
- * tools/make_book.py); every key a spread uses is listed by its {@link Spread#keys()}, which the self-test checks
- * against both language files.
+ * The content of the guide book, as data: chapters of sections, which the client's {@code GuideBookScreen} wraps and
+ * breaks into pages. Texts are translation keys {@code greektrees.book.<key>} (written by tools/make_book.py); every
+ * key the book uses is listed by {@link #keys()}, which the self-test checks against both language files.
  */
 public final class GuideBook {
     /** Trees with a planting text of their own instead of {@code plant.default}. */
@@ -40,162 +40,133 @@ public final class GuideBook {
         return GreekTrees.MOD_ID + ".book." + name;
     }
 
-    public sealed interface Spread permits Cover, Contents, Tree, BigTrees, Fruits, Pits {
-        List<String> keys();
-    }
-
-    /** The closed book: only the cover. */
-    public record Cover() implements Spread {
-        @Override
-        public List<String> keys() {
+    public sealed interface Section permits Heading, Text, Lore, Dedication, ItemLine, Recipe, Pictures, Saplings, Break {
+        default List<String> keys() {
             return List.of();
         }
     }
 
-    /** A line of the contents: its icon, its title and the spread it opens. */
-    public record Entry(ItemStack icon, String title, int spread) {
-    }
-
-    /** Left the clickable contents, right the basics. */
-    public record Contents(List<Entry> entries) implements Spread {
+    public record Heading(String key) implements Section {
         @Override
         public List<String> keys() {
-            List<String> keys = new ArrayList<>(List.of(key("contents"), key("basics"), key("basics.text")));
-            entries.forEach(e -> keys.add(e.title()));
-            return keys;
+            return List.of(key);
         }
     }
 
-    /**
-     * One tree. Left its name, picture and description, right its recipe, how to plant it and its fruit; the Aries
-     * oak shows its sixteen saplings in place of the fruit.
-     */
-    public record Tree(String name, Item sapling, List<ItemStack> fruits) implements Spread {
-        public String title() {
-            return key(name + ".name");
-        }
-
-        public String about() {
-            return key(name + ".about");
-        }
-
-        public String lore() {
-            return key(name + ".lore");
-        }
-
-        public String planting() {
-            return key(OWN_PLANTING.contains(name) ? name + ".plant" : "plant.default");
-        }
-
-        public String fruit() {
-            return key(fruits.isEmpty() ? "fruit.none" : name + ".fruit");
-        }
-
-        /** Grows only from a 4x4 square of saplings. */
-        public boolean square() {
-            return name.equals("aries_oak");
-        }
-
-        public Identifier picture() {
-            return GuideBook.picture(name);
-        }
-
-        public Recipe recipe() {
-            return GuideBook.recipe(name + "_sapling");
-        }
-
+    public record Text(String key) implements Section {
         @Override
         public List<String> keys() {
-            List<String> keys = new ArrayList<>(List.of(title(), about(), lore(), planting(),
-                    key("heading.crafting"), key("heading.planting")));
-            if (!square()) {
-                keys.addAll(List.of(fruit(), key("heading.fruit")));
-            }
-            return keys;
+            return List.of(key);
         }
     }
 
-    /** A tree four saplings in a square grow into. */
-    public record BigTree(String name, Item sapling) {
-        public String title() {
-            return key(name + ".name");
-        }
-
-        public String about() {
-            return key(name + ".about");
-        }
-
-        public Identifier picture() {
-            return GuideBook.picture(name);
-        }
-    }
-
-    /** The large date palm on the left, the big weeping willow on the right. */
-    public record BigTrees(BigTree left, BigTree right) implements Spread {
+    /** A line of myth, set in italics. */
+    public record Lore(String key) implements Section {
         @Override
         public List<String> keys() {
-            return List.of(key("big"), key("big.square"), left.title(), left.about(), right.title(), right.about());
+            return List.of(key);
         }
     }
 
-    /** A fruit in the list: the item, its hunger points and the tree's name. */
-    public record FruitRow(ItemStack fruit, int nutrition, String tree) {
-    }
-
-    /** Left how fruit ripens and is picked, with the olive's three stages; right every fruit. */
-    public record Fruits(List<Identifier> stages, List<FruitRow> rows) implements Spread {
+    /** Whom a tree is dedicated to, set off in the title's blue. */
+    public record Dedication(String key) implements Section {
         @Override
         public List<String> keys() {
-            List<String> keys = new ArrayList<>(List.of(key("fruit"), key("fruit.text"), key("fruit.row")));
-            rows.forEach(r -> keys.add(r.tree()));
-            return keys;
+            return List.of(key);
         }
     }
 
-    /** Left the olive pits, right the sharpened pit's recipe. */
-    public record Pits(Recipe recipe) implements Spread {
+    /** Item icons with a text beside them. */
+    public record ItemLine(List<ItemStack> icons, String key, Object... args) implements Section {
         @Override
         public List<String> keys() {
-            return List.of(key("pits"), key("pits.text"), key("heading.crafting"));
+            return List.of(key);
         }
     }
 
     /** A crafting grid: nine stacks, row by row (empty where nothing goes), and what it makes. */
-    public record Recipe(List<ItemStack> grid, ItemStack result) {
+    public record Recipe(List<ItemStack> grid, ItemStack result) implements Section {
+    }
+
+    /** Square pictures side by side, each {@code size} wide, from textures {@code textureSize} wide. */
+    public record Pictures(List<Identifier> textures, int size, int textureSize, boolean framed) implements Section {
+    }
+
+    /** A square of saplings, {@code side} to a side, the way they have to be planted; the texts stand beside it. */
+    public record Saplings(Item sapling, int side, List<String> keys) implements Section {
+    }
+
+    /** What follows starts a new page. */
+    public record Break() implements Section {
+    }
+
+    /** A chapter with its tab: the trees' tabs are on the left of the book, the others on the right. */
+    public record Chapter(String title, ItemStack icon, boolean tree, List<Section> sections) {
     }
 
     /** Built when the book opens: item stacks need the registries. */
-    public static List<Spread> spreads() {
-        List<Spread> spreads = new ArrayList<>();
-        List<Entry> entries = new ArrayList<>();
-        spreads.add(new Cover());
-        spreads.add(new Contents(entries));
+    public static List<Chapter> chapters() {
+        List<Chapter> chapters = new ArrayList<>();
+        chapters.add(new Chapter(key("basics"), new ItemStack(GreekTrees.GUIDE_BOOK), false,
+                List.of(new Text(key("basics.text")))));
         Map<String, List<ItemLike>> fruit = Map.of("olive", List.of(GreekTrees.OLIVE), "fig", List.of(GreekTrees.FIG),
                 "strawberry_tree", List.of(GreekTrees.ARBUTUS_BERRY), "date_palm", List.of(GreekTrees.DATE),
                 "mulberry", List.of(GreekTrees.BLACK_MULBERRY, GreekTrees.WHITE_MULBERRY, GreekTrees.RED_MULBERRY));
-        List<FruitRow> rows = new ArrayList<>();
+        List<Section> rows = new ArrayList<>();
         for (GreekTrees.Species s : GreekTrees.SPECIES) {
-            List<ItemStack> fruits = fruit.getOrDefault(s.name(), List.of()).stream().map(ItemStack::new).toList();
-            Tree tree = new Tree(s.name(), s.item(), fruits);
-            entries.add(new Entry(new ItemStack(s.item()), tree.title(), spreads.size()));
-            spreads.add(tree);
+            String name = s.name();
+            List<ItemStack> fruits = fruit.getOrDefault(name, List.of()).stream().map(ItemStack::new).toList();
+            List<Section> sections = new ArrayList<>(List.of(picture(name), new Text(key(name + ".about")),
+                    new Lore(key(name + ".lore")), new Heading(key("heading.crafting")), recipe(name + "_sapling"),
+                    new Heading(key("heading.planting"))));
+            String planting = key(OWN_PLANTING.contains(name) ? name + ".plant" : "plant.default");
+            if (name.equals("aries_oak")) { // grows only from a 4x4 square of saplings, and bears no fruit
+                sections.add(3, new Dedication(key(name + ".dedication"))); // under the lore
+                sections.add(new Saplings(s.item(), 4, List.of(planting)));
+            } else {
+                sections.add(new Text(planting));
+                sections.add(new Heading(key("heading.fruit")));
+                sections.add(fruits.isEmpty() ? new Text(key("fruit.none")) : new ItemLine(fruits, key(name + ".fruit")));
+            }
+            chapters.add(new Chapter(key(name + ".name"), new ItemStack(s.item()), true, sections));
             for (ItemStack f : fruits) {
                 FoodProperties food = f.get(DataComponents.FOOD);
-                rows.add(new FruitRow(f, food == null ? 0 : food.nutrition(), tree.title()));
+                rows.add(new ItemLine(List.of(f), key("fruit.row"), f.getHoverName(), food == null ? 0 : food.nutrition(),
+                        Component.translatable(key(name + ".name"))));
             }
         }
+
         Item palm = GreekTrees.SPECIES.get(4).item(), willow = GreekTrees.SPECIES.get(6).item();
-        entries.add(new Entry(new ItemStack(palm), key("big"), spreads.size()));
-        spreads.add(new BigTrees(new BigTree("large_date_palm", palm), new BigTree("large_weeping_willow", willow)));
-        entries.add(new Entry(new ItemStack(GreekTrees.OLIVE), key("fruit"), spreads.size()));
-        spreads.add(new Fruits(List.of(stage(0), stage(1), stage(2)), rows));
-        entries.add(new Entry(new ItemStack(GreekTrees.OLIVE_PIT), key("pits"), spreads.size()));
-        spreads.add(new Pits(recipe("sharpened_olive_pit")));
-        return spreads;
+        List<Section> big = new ArrayList<>();
+        for (Map.Entry<String, Item> tree : List.of(Map.entry("large_date_palm", palm), Map.entry("large_weeping_willow", willow))) {
+            big.add(new Heading(key(tree.getKey() + ".name")));
+            big.add(picture(tree.getKey()));
+            big.add(new Saplings(tree.getValue(), 2, List.of(key(tree.getKey() + ".about"), key("big.square"))));
+        }
+        chapters.add(new Chapter(key("big"), new ItemStack(palm), false, big));
+
+        List<Section> fruits = new ArrayList<>(List.of(new Text(key("fruit.text")),
+                new Pictures(List.of(stage(0), stage(1), stage(2)), 32, 16, false), new Break()));
+        fruits.addAll(rows);
+        chapters.add(new Chapter(key("fruit"), new ItemStack(GreekTrees.OLIVE), false, fruits));
+
+        chapters.add(new Chapter(key("pits"), new ItemStack(GreekTrees.OLIVE_PIT), false, List.of(
+                new Text(key("pits.text")), new Heading(key("heading.crafting")), recipe("sharpened_olive_pit"))));
+        return chapters;
     }
 
-    private static Identifier picture(String name) {
-        return GreekTrees.id("textures/gui/book/" + name + ".png");
+    /** Every translation key the book shows. */
+    public static List<String> keys() {
+        List<String> keys = new ArrayList<>();
+        for (Chapter chapter : chapters()) {
+            keys.add(chapter.title());
+            chapter.sections().forEach(s -> keys.addAll(s.keys()));
+        }
+        return keys;
+    }
+
+    private static Pictures picture(String name) {
+        return new Pictures(List.of(GreekTrees.id("textures/gui/book/" + name + ".png")), 96, 192, true);
     }
 
     private static Identifier stage(int stage) {

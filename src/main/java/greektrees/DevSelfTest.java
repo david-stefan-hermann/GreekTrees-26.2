@@ -1452,25 +1452,30 @@ final class DevSelfTest {
         lines.add(String.format("guide book gift: given twice to a new player, books %d (want 1), marked %s", books,
                 marked));
 
-        List<GuideBook.Spread> spreads = GuideBook.spreads();
+        List<GuideBook.Chapter> chapters = GuideBook.chapters();
         int trees = 0, matching = 0;
         boolean pits = false;
         Set<String> keys = new LinkedHashSet<>(List.of("item.greektrees.guide_book"));
-        for (GuideBook.Spread spread : spreads) {
-            keys.addAll(spread.keys());
-            if (spread instanceof GuideBook.Tree tree) {
-                trees++;
-                GuideBook.Recipe recipe = tree.recipe();
-                List<Item> in = recipe.grid().stream().filter(x -> !x.isEmpty()).map(ItemStack::getItem)
-                        .sorted(Comparator.comparing(Item::toString)).toList();
-                List<Item> want = RECIPES.get(tree.name()).stream().sorted(Comparator.comparing(Item::toString)).toList();
-                if (recipe.result().is(tree.sapling()) && in.equals(want)) {
-                    matching++;
+        keys.addAll(GuideBook.keys());
+        for (GuideBook.Chapter chapter : chapters) {
+            trees += chapter.tree() ? 1 : 0;
+            for (GuideBook.Section section : chapter.sections()) {
+                if (!(section instanceof GuideBook.Recipe recipe)) {
+                    continue;
                 }
-            } else if (spread instanceof GuideBook.Pits p) {
-                List<ItemStack> g = p.recipe().grid();
-                pits = p.recipe().result().is(GreekTrees.SHARPENED_OLIVE_PIT) && g.stream().filter(x -> !x.isEmpty()).count() == 2
-                        && g.get(1).is(GreekTrees.OLIVE_PIT) && g.get(4).is(GreekTrees.OLIVE_PIT);
+                List<ItemStack> g = recipe.grid();
+                if (chapter.tree()) { // its icon is its sapling
+                    List<Item> in = g.stream().filter(x -> !x.isEmpty()).map(ItemStack::getItem)
+                            .sorted(Comparator.comparing(Item::toString)).toList();
+                    String name = BuiltInRegistries.ITEM.getKey(chapter.icon().getItem()).getPath().replace("_sapling", "");
+                    List<Item> want = RECIPES.get(name).stream().sorted(Comparator.comparing(Item::toString)).toList();
+                    if (recipe.result().is(chapter.icon().getItem()) && in.equals(want)) {
+                        matching++;
+                    }
+                } else {
+                    pits = recipe.result().is(GreekTrees.SHARPENED_OLIVE_PIT) && g.stream().filter(x -> !x.isEmpty()).count() == 2
+                            && g.get(1).is(GreekTrees.OLIVE_PIT) && g.get(4).is(GreekTrees.OLIVE_PIT);
+                }
             }
         }
         List<String> missing = new ArrayList<>();
@@ -1483,8 +1488,8 @@ final class DevSelfTest {
         if (trees != GreekTrees.SPECIES.size() || matching != trees || !pits || !missing.isEmpty()) {
             failures++;
         }
-        lines.add(String.format("guide book content: %d spreads, tree pages %d, recipes as the server's %d/%d, sharpened "
-                        + "pit recipe %s, keys %d, missing in the language files %s", spreads.size(), trees, matching,
+        lines.add(String.format("guide book content: %d chapters, tree chapters %d, recipes as the server's %d/%d, sharpened "
+                        + "pit recipe %s, keys %d, missing in the language files %s", chapters.size(), trees, matching,
                 trees, pits, keys.size(), missing.isEmpty() ? "none" : missing));
         return failures;
     }
