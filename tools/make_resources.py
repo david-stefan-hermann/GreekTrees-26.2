@@ -6,6 +6,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import make_book  # noqa: E402
 import make_dates  # noqa: E402
 import make_fruits  # noqa: E402
 from recipes import recipe_unlock  # noqa: E402
@@ -87,12 +88,13 @@ def main():
         de[f'block.{NS}.{p}'] = de_potted
     for tree in SQUARE_TREES:  # the big tree four saplings in a square grow into
         write(f'data/{NS}/worldgen/configured_feature/large_{tree}.json', {'type': f'{NS}:large_{tree}', 'config': {}})
-    for module in (make_dates, make_fruits):
+    for module in (make_dates, make_fruits, make_book):
         for key, (en_text, de_text) in module.write_all(write).items():
             en[key] = en_text
             de[key] = de_text
     write('data/minecraft/tags/block/saplings.json', {'values': saplings})
     write('data/minecraft/tags/item/saplings.json', {'values': saplings})
+    write(f'data/{NS}/tags/item/saplings.json', {'values': saplings})  # the guide book's recipe
     write('data/minecraft/tags/block/flower_pots.json', {'values': pots})
     write(f'assets/{NS}/lang/en_us.json', en)
     write(f'assets/{NS}/lang/de_de.json', de)

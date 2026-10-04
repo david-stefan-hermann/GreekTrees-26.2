@@ -4,6 +4,7 @@ python render_selftest.py                -> selftest_trees.png (first growth of 
 python render_selftest.py olive date_palm -> selftest_olive.png, selftest_date_palm.png (six growths each)
 python render_selftest.py drafts p1 w1    -> drafts_p1.png, drafts_w1.png (run/greektrees-drafts/, the rounds
                                              of PLAN-PALME-WEIDE.md written by `./gradlew runServer -Pdrafts=p1,w1`)
+python render_selftest.py trunks          -> willow_trunks.png (the willow trunks rebuilt by hand and rolled ones)
 """
 import json
 import os
@@ -214,6 +215,74 @@ def sheet(entries, title, subtitle, out, scale=1.0, side=10):
     print(out, img.size)
 
 
+def joined(logs, top):
+    """The logs joined to the foot (y 0) over faces, edges or corners, up to layer top: limb ends that hang down
+    to the trunk's height stay out."""
+    todo = [p for p in logs if p[1] == 0]
+    seen = set(todo)
+    while todo:
+        x, y, z = todo.pop()
+        for q in ((x + i, y + j, z + k) for i in (-1, 0, 1) for j in (-1, 0, 1) for k in (-1, 0, 1)):
+            if q in logs and q not in seen and q[1] <= top:
+                seen.add(q)
+                todo.append(q)
+    return {p: logs[p] for p in seen}
+
+
+def trunk_views(logs):
+    """A trunk alone on a small piece of grass: iso view, then side views from the east and from the south."""
+    xs, zs = [p[0] for p in logs], [p[2] for p in logs]
+    v = dict(logs)
+    for x in range(min(xs) - 2, max(xs) + 3):
+        for z in range(min(zs) - 2, max(zs) + 3):
+            v[(x, -1, z)] = ('grass_block', 'y')
+    steve = (max(xs) + 2, max(zs) + 2)
+    turned = {(z, y, -x): b for (x, y, z), b in v.items()}  # the same seen from the east
+    return [voxel.render(v, steve=steve, margin=10),
+            voxel.render_side(turned, s=16, steve=(steve[1], -steve[0]), margin=8),
+            voxel.render_side(v, s=16, steve=steve, margin=8)]
+
+
+# the willow trunks the user rebuilt by hand (concept/reference/) and their heights, as measured in PLAN-0.17.md E.1
+REFERENCES = {'small_1': 5, 'small_2': 9, 'small_3': 9, 'big_1': 11, 'big_2': 10, 'big_3': 9}
+
+
+def trunk_sheet():
+    """willow_trunks.png: the six trunks rebuilt by hand, below them nine rolled thin and nine rolled big trunks
+    (run/greektrees-selftest/willow_trunk_roll_*.json, written by the self-test)."""
+    rows = [('Von Hand umgebaut (Referenz)',
+             [(n.replace('_', ' '), joined({p: b for p, b in load('willow_trunk_' + n, 'reference').items()
+                                            if voxel.is_log(b[0])}, th)) for n, th in REFERENCES.items()]),
+            ('Gewürfelt: kleine Weide', [(f'Wurf {n + 1}', load(f'willow_trunk_roll_small_{n}')) for n in range(9)]),
+            ('Gewürfelt: große Weide', [(f'Wurf {n + 1}', load(f'willow_trunk_roll_big_{n}')) for n in range(9)])]
+    rows = [(title, [(label, trunk_views({p: b for p, b in v.items() if p[1] >= 0})) for label, v in trunks])
+            for title, trunks in rows]
+    widths = [sum(sum(i.width + 6 for i in views) + 30 for _, views in trunks) for _, trunks in rows]
+    heights = [max(i.height for _, views in trunks for i in views) + 80 for _, trunks in rows]
+    W = max(widths) + 60
+    img = Image.new('RGBA', (W, 110 + sum(heights) + 20), PAPER)
+    d = ImageDraw.Draw(img)
+    d.text((24, 14), 'Trauerweide · der Stamm (0.17.0)', font=F_TITLE, fill=INK)
+    d.text((26, 60), 'Jeder Stamm allein bis zum Kronenansatz: Iso-Ansicht, von Osten, von Süden. Oben die sechs von '
+                     'Hand umgebauten, darunter die ersten neun Würfe des Selbsttests.', font=F_TEXT, fill=GREY)
+    y = 100
+    for (title, trunks), h in zip(rows, heights):
+        panel = sky(W - 40, h - 10)
+        pd = ImageDraw.Draw(panel)
+        pd.text((16, 10), title, font=F_LABEL, fill=INK)
+        x = 16
+        for label, views in trunks:
+            pd.text((x, h - 44), label, font=F_TEXT, fill=INK)
+            for im in views:
+                panel.alpha_composite(im, (x, h - 50 - im.height))
+                x += im.width + 6
+            x += 30
+        img.alpha_composite(panel, (20, y))
+        y += h
+    img.save('willow_trunks.png')
+    print('willow_trunks.png', img.size)
+
+
 def draft_sheet(key, scale=0.7, side=8):
     """drafts_<key>.png: one row per variant (letter, name, what changes), three growths each with a player."""
     title, sub, variants = DRAFTS[key]
@@ -233,27 +302,9 @@ def draft_sheet(key, scale=0.7, side=8):
                     if voxel.is_log(b):
                         per_layer[y] = per_layer.get(y, 0) + 1
                 cut = next((y for y in sorted(per_layer) if y >= 1 and per_layer[y] > TRUNK[key]), max(per_layer))
-                logs = {p: b for p, b in v.items() if voxel.is_log(b[0]) and p[1] < cut}
-                todo = [p for p in logs if p[1] == 0]  # drop limb ends that hang down to below the cut
-                joined = set(todo)
-                while todo:
-                    x, y, z = todo.pop()
-                    for q in ((x + i, y + j, z + k) for i in (-1, 0, 1) for j in (-1, 0, 1) for k in (-1, 0, 1)):
-                        if q in logs and q not in joined:
-                            joined.add(q)
-                            todo.append(q)
-                logs = {p: logs[p] for p in joined}
-                xs, zs = [p[0] for p in logs], [p[2] for p in logs]
-                v = dict(logs)
-                for x in range(min(xs) - 2, max(xs) + 3):
-                    for z in range(min(zs) - 2, max(zs) + 3):
-                        v[(x, -1, z)] = ('grass_block', 'y')
-                steve = (max(xs) + 2, max(zs) + 2)
-                views = views[:1] + [voxel.render(v, steve=steve, margin=10)]
-                side = 16
-                turned = {(z, y, -x): b for (x, y, z), b in v.items()}  # the same seen from the east
-                views.append(voxel.render_side(turned, s=side, steve=(steve[1], -steve[0]), margin=8))
-            views.append(voxel.render_side(v, s=side, steve=steve, margin=8))
+                views = views[:1] + trunk_views(joined({p: b for p, b in v.items() if voxel.is_log(b[0])}, cut - 1))
+            else:
+                views.append(voxel.render_side(v, s=side, steve=steve, margin=8))
             ims.append(views)
         rows.append((letter, name, what, ims))
     label_w = 330
@@ -288,6 +339,9 @@ def draft_sheet(key, scale=0.7, side=8):
 
 def main():
     keys = sys.argv[1:]
+    if keys == ['trunks']:
+        trunk_sheet()
+        return
     if keys and keys[0] == 'drafts':
         for key in keys[1:]:
             draft_sheet(key)

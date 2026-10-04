@@ -1,4 +1,4 @@
-# Wie die Varianten beim Wachsen entstehen (Stand 2026-10-02)
+# Wie die Varianten beim Wachsen entstehen (Stand 2026-10-03)
 
 Maßgeblich ist seit der Mod der Java-Code `src/main/java/greektrees/tree/TreeShapes.java`. Die Konzeptgrafiken in
 `concept/variation/` (aus `concept/species.py`) zeigen für Olive und Palme noch den Stand vor dem 2026-10-02; aktuelle
@@ -114,19 +114,23 @@ Seit 0.16.1 wächst kein Stamm mehr als Gerade (in 0.16.0 stand der Versatz fest
 
 | Würfel | Bereich | Wirkung |
 | --- | --- | --- |
-| Versätze | Höhe/4 bis Höhe/3, mindestens 1 | ein kurzer Stamm (4–5) hat einen, der höchste einer Dattelpalme zwei bis drei, die der großen Palme bis fünf |
+| Versätze | Höhe/4 bis Höhe/3, plus 1 (seit 0.17.0, deutlichere Kurve), mindestens 1, höchstens (Höhe − 2)/2 | ein kurzer Stamm (4–5) hat einen, der höchste einer Dattelpalme drei bis vier, die der großen Palme bis sechs |
 | Biegung | je ⅓ | oben gebogen (Versätze drängen sich unter der Krone), am Fuß gebogen (darüber gerade), durchgehend schräg |
 | Streuung | jeder Versatz ±1 Block | auch zwei „durchgehend schräge“ Stämme sind nicht gleich |
 | Abstand | mindestens zwei Blöcke übereinander am Fuß, zwischen zwei Versätzen und unter der Krone | keine Treppe; die Dattelrispen haben oben Holz hinter sich |
 
 | Würfel | Bereich | Wirkung |
 | --- | --- | --- |
-| Stämme | 1, 2 oder 3 (je ⅓) | Füße berühren sich nur über Ecken: der zweite an einer Ecke des höchsten, der dritte an der Ecke daneben (V) oder gegenüber (Linie), je 50 % |
+| Stämme | 1, 2 oder 3 (je ⅓) | seit 0.17.0 alle Füße in einem 2×2: zwei auf einer Diagonale (berühren sich über die Ecke), drei als L auf drei der vier Felder (die Arme Fläche an Fläche am Eckstamm) |
 | Ausrichtung | 4 Drehungen × gespiegelt | das Fußmuster in jede Richtung |
-| Höhen | 9–11 / 6–7 / 4–5 | die zwei Nebenstämme tauschen zufällig |
-| Neigung | höchster Stamm in eine der vier Richtungen, die anderen von ihm weg entlang x oder z | ein Wurf, bei dem zwei Stammblöcke auf gleicher Höhe nebeneinander stünden, wird neu gewürfelt |
-| Krone | Stern aus acht feinen Wedeln (gerade 5 lang mit 1–2 hängenden Blöcken, diagonal kürzer), darüber ein Schopf aus vier steilen | auf dem zweit- und dritthöchsten Stamm kleiner: gerade Wedel 4 und 3 lang, Schopf kürzer |
-| Datteln | höchster Stamm: 3–4 Seiten am obersten Stammblock + 1–2 einen Block tiefer; jeder weitere Stamm 2–3 + 0–1 | Dattelrispen unter jeder Krone, Reifestufe je Rispe 30/40/30 % |
+| Höhen | 9–11 / 6–7 / 4–5 | bei drei Stämmen steht der höchste auf einem gewürfelten Feld des L |
+| Neigung | zwei Stämme: der höchste in eine der vier Richtungen, der andere von ihm weg entlang x oder z; drei Stämme: jeder Arm in seine Richtung, der Eckstamm von beiden weg | nebeneinander dürfen Stammblöcke nur in den untersten drei Schichten stehen; ein Wurf, der das bricht, wird neu gewürfelt |
+| Krone | Stern aus acht feinen Wedeln (gerade etwa 5 lang mit hängender Spitze, diagonal kürzer), darüber ein Schopf aus steilen | auf dem zweit- und dritthöchsten Stamm kleiner: gerade Wedel etwa 4 und 3 lang, Schopf kürzer |
+| Kronenzufall | seit 0.17.0 je Wedel gewürfelt | Richtung k·45° ± 10°; gerade Wedel 5 − Größe + (−1, 0, 0, +1), mindestens 2; diagonale ± 1 Block; Bogen steigt 1 oder 2 und kippt bei 50–75 % der Länge; hängende Spitze gerade 0–3, diagonal 0–2 |
+| Lücken | 25 % der Kronen | ein Sternwedel fehlt oder ist ein Stummel aus 2 Blöcken (je 50 %); die volle Krone hat dann zur Hälfte eine zweite Lücke, nie neben der ersten |
+| Schopf | 3–5 steile Wedel | Startwinkel frei, Abstand 360°/n ± 15°, jeder ± 1 Block länger/kürzer und höher/tiefer an der Spitze |
+| Kronenspitze | über dem Kern | 1 Blatt immer, 2. zu 70 %, 3. zu 15 %; die vier Blätter neben dem Kern bleiben fest (die Datteln hängen darunter) |
+| Datteln | höchster Stamm: 3–4 Seiten am obersten Stammblock, jeder weitere Stamm 2–3 | seit 0.17.0 nur direkt unter dem Laub (unter den vier Blättern neben dem Kronenkern), nie tiefer; Reifestufe je Rispe 30/40/30 % |
 
 ### 11 Große Dattelpalme – `jungle_wood`, `jungle_leaves`, Dattelrispen
 Wächst seit 0.10.0 aus vier Dattelpalmensetzlingen im Quadrat (wie die Schwarzeiche), der Hauptstamm auf der
@@ -167,14 +171,16 @@ mit 2×2-Stamm. Werte: normal / groß.
 
 | Würfel | Bereich | Wirkung |
 | --- | --- | --- |
-| Stamm | 3–5 / 6–8 hoch, plus bis zu 5 / 4 je nach Größenwurf, mindestens 4 | seit 0.16.0 ein Bogen (Runden W5–W7): über zwei geraden Schichten geht der Stamm einen Block hinaus (ab 9 Höhe zwei) und kommt wieder zurück, die Krone steht über dem Fuß |
-| Bogen | 50 % entlang einer Achse, 50 % diagonal | diagonal heißt: ein Versatz entlang der einen Achse, einer entlang der anderen, auf demselben Weg zurück; nie beide Achsen in einer Schicht. Unter 5 Höhe immer entlang einer Achse |
-| Versatz | je Schicht höchstens 1 Block auf einer Achse | Fläche an Fläche: der dünne Stamm behält am Versatz ein Knie (der alte Stamm läuft eine Schicht weiter); die 2×2-Schichten der großen Weide überlappen ohnehin |
-| Wurzelanlauf | 2–3 / 4–6 Felder neben dem Fuß (ohne Ecken) | |
-| Mitte | Stamm + 3–4 / 5–6 | gerader Leittrieb bis zur Kronenmitte |
+| Stamm | 3–5 / 6–8 hoch, plus bis zu 5 / 4 je nach Größenwurf, mindestens 4 | seit 0.17.0 nach sechs von Hand umgebauten Stämmen (`concept/reference/`, `PLAN-0.17.md`): eine subtile Biegung, manchmal ein C, nie ein Labyrinth; Fuß und oberste Stammschicht glatt; die Krone sitzt über dem Stammende |
+| Form | Biegung etwa ⅔, C etwa ⅓ | Biegung: der Stamm rückt einmal um einen Block weiter und bleibt dort (kleine Weide nur entlang einer Achse, ein einzelner Diagonalschritt sähe aus wie ein Zickzack; große Weide Achse oder diagonal, je 50 %); bei der kleinen Weide ab 8 Höhe zu 30 % ein zweites Mal in dieselbe Richtung, mindestens drei ruhige Schichten höher. C: hinaus und denselben Weg zurück, dazwischen ein ruhiger Bauch; diagonal nur selten (30 % der C) |
+| Kleine Weide | Säulen mit Knie | ein Versatz = die alte Säule läuft eine Schicht neben der neuen weiter (Fläche an Fläche); diagonal = zwei Versätze in direkt aufeinanderfolgenden Schichten. Biegung zwischen der 3. Schicht und der unter der obersten (bei 4 Höhe ab der 2.); C hinaus in der 3. (ab 7 Höhe auch 4.) Schicht, zurück eine oder zwei Schichten unter der obersten, Bauch mindestens 2 Schichten |
+| Knorren | 25 % der kleinen Stämme mit einer ruhigen Säule von mindestens 3 Schichten | 1–2 Blöcke an einer freien Seite der längsten ruhigen Säule, in deren mittlerem Drittel |
+| Große Weide | 2×2, weiche Übergänge | höchstens einen Block neben dem Fußquadrat. Achsschritt gewürfelt aus: Vorläufer (ein neuer Block eine Schicht früher), Nachzügler (ein alter Block eine Schicht länger), beides schräg gegenüber, volle 2×3-Übergangsschicht. Diagonalschritt über drei Schichten in einer der zwei gemessenen Formen; beim C auch als zwei Achsschritte zwei Schichten auseinander. Übergangsschichten 5–6 Blöcke, zwei Schichten übereinander teilen immer mindestens 3; C-Bauch mindestens 2 ruhige Schichten. Beim C entlang einer Achse bewegt mindestens einer der beiden Übergänge Blöcke in beiden Spuren (beides oder volle Schicht), sonst sähe eine Seite aus wie ein bloß verschobenes Stammstück |
+| Wurzelanlauf | 2–3 / 4–6 Felder neben dem Fuß (ohne Ecken) | große Weide: auf 0–2 davon ein zweiter Block |
+| Mitte | Stamm + 3–4 / 5–6 | gerader Leittrieb über dem Stammende bis zur Kronenmitte |
 | Krone | Radius 3,0–3,6 / 4,2–4,8, Höhe 2,4 / 3,0 | gewölbt, über der Mitte am höchsten |
 | Äste | 5–7 / 7–9, rundum ±14°, Reichweite 4,3–5,2 / 6,3–7,3 ±0,5 | steigen, laufen über einen Bogen und kommen am Rand 2–3 / 3–4 unter der Mitte an; oben ringsum in Laub gehüllt (je Seite 85 %), am Ende eine kleine Wolke |
-| Vorhang am Rand | äußerer Ring (1,6 Blöcke), je Spalte 65 % | Strähne 4–9 / 5–11 lang vom untersten Blatt nach unten |
+| Vorhang am Rand | äußerer Ring (1,6 Blöcke), je Spalte 65 % | Strähne 4–9 / 5–11 lang vom untersten Blatt nach unten. Große Weide seit 0.17.0: dazu jede Spalte am Umriss des Laubs von oben (eine Nachbarspalte ohne Laub) in den äußeren 3 Blöcken, und jede Randspalte wird versucht; der Abstand zwischen den Strängen dünnt sie aus (im Mittel 21,5 statt 10,7 Randstränge je Baum) |
 | Vorhang innen | ab 2,5 / 3,5 vom Stamm, je Spalte 23 % | Strähne 1–3 / 1–4 |
 | Raum | innerhalb 2,5 / 3,5 vom Stamm | keine Strähnen |
 | Länge | | `finish()` kappt jede Strähne, wo Vanilla-Laub zerfiele (6 Schritte vom Holz) |

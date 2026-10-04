@@ -36,6 +36,8 @@ public final class Shape {
     private final Map<BlockPos, Integer> leafDistance = new HashMap<>();
     private boolean persistent;
     private int softFoot;
+    int trunkTop;
+    int[] strandCounts = new int[3];
 
     Shape(RandomSource rng) {
         this.rng = rng;
@@ -64,6 +66,19 @@ public final class Shape {
     Shape softFoot(int layers) {
         softFoot = layers;
         return this;
+    }
+
+    /** A willow's trunk height (the crown's leader starts above it), for the self-test; 0 on other trees. */
+    public int trunkTop() {
+        return trunkTop;
+    }
+
+    /**
+     * A willow's strands, for the self-test: hung at the rim of its crown, further in, and (counted apart, wherever
+     * they come from) more than three blocks in from the rim.
+     */
+    public int[] strandCounts() {
+        return strandCounts;
     }
 
     static int ip(double c) {

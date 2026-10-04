@@ -5,11 +5,21 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.mojang.authlib.GameProfile;
 
 import greektrees.tree.AriesOak;
 import greektrees.tree.Drafts;
@@ -155,7 +165,7 @@ final class DevSelfTest {
                     continue;
                 }
                 int grown = 0, minH = 99, maxH = 0, minW = 99, maxW = 0, logs = 0, leaves = 0, mismatched = 0, decayed = 0;
-                int fruit = 0, minFruit = 99, maxFruit = 0, looseFruit = 0, mixedTrees = 0, stacked = 0;
+                int fruit = 0, minFruit = 99, maxFruit = 0, looseFruit = 0, mixedTrees = 0, bare = 0;
                 int mixedKinds = 0, vines = 0, looseVines = 0;
                 int[] stages = new int[3];
                 List<Block> fruitBlocks = FRUIT.getOrDefault(species.name(), List.of());
@@ -222,8 +232,8 @@ final class DevSelfTest {
                         if (!fruitBlocks.contains(f.getBlock()) || !f.canSurvive(level, p)) {
                             looseFruit++;
                         }
-                        if (palm && level.getBlockState(p.above()).is(GreekTrees.DATE_CLUSTER)) {
-                            stacked++; // the cluster above hangs down into this one
+                        if (palm && !level.getBlockState(p.above()).is(Blocks.JUNGLE_LEAVES)) {
+                            bare++; // a cluster hangs right under the crown's leaves, never lower
                         }
                     }
                     // vines (willow) still hang where they were put: on a leaf, or under a vine with the same face
@@ -236,7 +246,7 @@ final class DevSelfTest {
                     }
                 }
                 boolean fruitOk = fruitBlocks.isEmpty() ? fruit == 0
-                        : minFruit > 0 && looseFruit == 0 && stacked == 0 && mixedKinds == 0 && stages[0] > 0
+                        : minFruit > 0 && looseFruit == 0 && bare == 0 && mixedKinds == 0 && stages[0] > 0
                         && stages[1] > 0 && stages[2] > 0;
                 boolean willow = species.name().equals("weeping_willow");
                 if (grown < growths || decayed > 0 || mismatched > 0 || !fruitOk || looseVines > 0
@@ -253,7 +263,7 @@ final class DevSelfTest {
                             String.join("/", fruitBlocks.stream().map(b -> BuiltInRegistries.BLOCK.getKey(b).getPath())
                                     .toList()), fruit, minFruit, maxFruit,
                             stages[0], stages[1], stages[2], mixedTrees, grown, looseFruit,
-                            palm ? ", clusters right under another " + stacked : "",
+                            palm ? ", clusters without palm leaves right above " + bare : "",
                             fruitBlocks.size() > 1 ? ", trees with more than one kind " + mixedKinds : ""));
                 }
 
@@ -287,9 +297,11 @@ final class DevSelfTest {
             failures += olivePit(level, lines);
             failures += pitDamage(level, server, lines);
             failures += creativeTab(level, lines);
+            failures += guideBook(server, level, lines);
             failures += palmClumps(lines);
             failures += mulberryKinds(lines);
-            failures += willowShapes(lines);
+            failures += willowShapes(out, lines);
+            failures += willowReferences(lines);
             failures += ariesWeeping(out, lines);
             failures += squareGrowth(level, random, out, lines, "date_palm", 0, 14);
             failures += squareGrowth(level, random, out, lines, "weeping_willow", 1, 14);
@@ -804,19 +816,19 @@ final class DevSelfTest {
         return breaks && endY - ground.getY() < 1.5 ? 0 : 1;
     }
 
-    /** The mod's own creative tab lists every sapling and every fruit. */
     /**
      * Large date palm layouts, rolled as shapes only (no world): 2-5 trunks, side trunks also on diagonal feet, no
      * two trunk blocks side by side at the same height (a single trunk never has that, so any pair belongs to two
-     * trunks).
+     * trunks), every date cluster right under a leaf.
      */
     private static int palmClumps(List<String> lines) {
         int rolls = 500;
-        int failures = smallPalms(lines, rolls);
+        int failures = smallPalms(lines, rolls) + palmCrowns(lines);
         int[] byCount = new int[7];
-        int diagonal = 0, sideBySide = 0, maxHeight = 0;
+        int diagonal = 0, sideBySide = 0, maxHeight = 0, bare = 0;
         for (int seed = 0; seed < rolls; seed++) {
             Map<BlockPos, Shape.Cell> cells = TreeShapes.largeDatePalm(RandomSource.create(seed)).cells();
+            bare += bareClusters(cells);
             Set<BlockPos> logs = new HashSet<>();
             cells.forEach((p, c) -> {
                 if (c.kind() == Shape.Kind.LOG) {
@@ -841,43 +853,98 @@ final class DevSelfTest {
             byCount[Math.min(feet, 6)]++;
         }
         boolean ok = byCount[0] + byCount[1] + byCount[6] == 0 && byCount[2] > 0 && byCount[3] > 0 && byCount[4] > 0
-                && byCount[5] > 0 && diagonal > 0 && sideBySide == 0;
+                && byCount[5] > 0 && diagonal > 0 && sideBySide == 0 && bare == 0;
         lines.add(String.format("large date palm layouts over %d rolls: trunks 2/3/4/5 = %d/%d/%d/%d (other %d), side "
-                        + "trunks on diagonal feet %d, trunk blocks side by side %d, highest log y %d", rolls,
-                byCount[2], byCount[3], byCount[4], byCount[5], byCount[0] + byCount[1] + byCount[6], diagonal,
-                sideBySide, maxHeight));
+                        + "trunks on diagonal feet %d, trunk blocks side by side %d, highest log y %d, date clusters "
+                        + "without palm leaves right above %d", rolls, byCount[2], byCount[3], byCount[4], byCount[5],
+                byCount[0] + byCount[1] + byCount[6], diagonal, sideBySide, maxHeight, bare));
         return failures + (ok ? 0 : 1);
     }
 
+    /** Date clusters of a rolled palm without a leaf right above them. */
+    private static int bareClusters(Map<BlockPos, Shape.Cell> cells) {
+        int n = 0;
+        for (Map.Entry<BlockPos, Shape.Cell> e : cells.entrySet()) {
+            n += e.getValue().state().is(GreekTrees.DATE_CLUSTER) && !isLeaf(cells, e.getKey().above()) ? 1 : 0;
+        }
+        return n;
+    }
+
     /**
-     * Date palms of one sapling, rolled as shapes only: one to three trunks; no two trunk blocks side by side at
-     * the same height, so feet touch at corners only; a single trunk slants along one axis and never back (its
-     * blocks spread along x or along z, not both, and every layer is where the one below is or one block further
-     * the same way); every leaf is persistent jungle leaves.
+     * Palm crowns rolled alone, 200 of each size from one random source, compared as their leaves around the core:
+     * at least 150 different ones per size, none the same after a quarter turn, every leaf joined to the core over
+     * faces, edges or corners.
+     */
+    private static int palmCrowns(List<String> lines) {
+        RandomSource r = RandomSource.create(11);
+        StringBuilder line = new StringBuilder("palm crowns over 200 rolls per size:");
+        boolean ok = true;
+        for (int size = 0; size <= 2; size++) {
+            Set<Set<BlockPos>> seen = new HashSet<>();
+            int even = 0, apart = 0;
+            for (int roll = 0; roll < 200; roll++) {
+                Set<BlockPos> leaves = new HashSet<>();
+                TreeShapes.palmCrown(r, size).cells().forEach((p, c) -> {
+                    if (c.kind() == Shape.Kind.LEAF) {
+                        leaves.add(p.below()); // relative to the core at 0, 1, 0
+                    }
+                });
+                seen.add(leaves);
+                Set<BlockPos> turned = new HashSet<>();
+                leaves.forEach(p -> turned.add(new BlockPos(-p.getZ(), p.getY(), p.getX())));
+                even += turned.equals(leaves) ? 1 : 0;
+                apart += leaves.size() + 1 - joined(leaves, Integer.MAX_VALUE).size();
+            }
+            ok &= seen.size() >= 150 && even == 0 && apart == 0;
+            line.append(String.format(" size %d: %d different, the same after a quarter turn %d, leaves apart from the "
+                    + "core %d;", size, seen.size(), even, apart));
+        }
+        lines.add(line.toString());
+        return ok ? 0 : 1;
+    }
+
+    /**
+     * Date palms of one sapling, rolled as shapes only: one to three trunks, their feet within a 2x2 square (two on
+     * a diagonal, three in an L); no two trunk blocks side by side at the same height above the lowest three layers;
+     * a single trunk slants along one axis and never back (its blocks spread along x or along z, not both, and every
+     * layer is where the one below is or one block further the same way); every leaf is persistent jungle leaves.
      */
     private static int smallPalms(List<String> lines, int rolls) {
         int[] byCount = new int[5];
-        int sideBySide = 0, winding = 0, straight = 0, otherLeaves = 0, loosePersistence = 0;
+        int sideBySide = 0, winding = 0, straight = 0, otherLeaves = 0, loosePersistence = 0, bare = 0, badFeet = 0;
+        int lean = 0;
         RandomSource r = RandomSource.create(7); // one source for all: small seeds in a row start alike
         for (int roll = 0; roll < rolls; roll++) {
             Shape shape = TreeShapes.datePalm(r);
             loosePersistence += shape.persistentLeaves() ? 0 : 1;
+            bare += bareClusters(shape.cells());
             Map<Integer, BlockPos> layers = new java.util.TreeMap<>(); // of a single trunk: its block per height
-            int feet = 0;
+            List<BlockPos> feetAt = new ArrayList<>();
             for (Map.Entry<BlockPos, Shape.Cell> e : shape.cells().entrySet()) {
                 BlockPos p = e.getKey();
                 if (e.getValue().kind() == Shape.Kind.LEAF) {
                     otherLeaves += e.getValue().state().is(Blocks.JUNGLE_LEAVES) ? 0 : 1;
                 } else if (e.getValue().kind() == Shape.Kind.LOG) {
-                    feet += p.getY() == 0 ? 1 : 0;
+                    if (p.getY() == 0) {
+                        feetAt.add(p);
+                    }
                     layers.put(p.getY(), p);
                     for (BlockPos q : List.of(p.east(), p.south())) {
                         Shape.Cell c = shape.cells().get(q);
-                        sideBySide += c != null && c.kind() == Shape.Kind.LOG ? 1 : 0;
+                        sideBySide += p.getY() >= 3 && c != null && c.kind() == Shape.Kind.LOG ? 1 : 0;
                     }
                 }
             }
+            int feet = feetAt.size();
             byCount[Math.min(feet, 4)]++;
+            int spanX = feetAt.stream().mapToInt(BlockPos::getX).max().orElse(0)
+                    - feetAt.stream().mapToInt(BlockPos::getX).min().orElse(0);
+            int spanZ = feetAt.stream().mapToInt(BlockPos::getZ).max().orElse(0)
+                    - feetAt.stream().mapToInt(BlockPos::getZ).min().orElse(0);
+            badFeet += feet > 1 && (spanX != 1 || spanZ != 1) ? 1 : 0; // two on a diagonal or three in an L of a 2x2
+            if (feet == 1) {
+                lean += Math.abs(layers.get(layers.size() - 1).getX()) + Math.abs(layers.get(layers.size() - 1).getZ());
+            }
             if (feet == 1) {
                 BlockPos top = layers.get(layers.size() - 1);
                 int dx = Integer.signum(top.getX()), dz = Integer.signum(top.getZ());
@@ -891,11 +958,14 @@ final class DevSelfTest {
             }
         }
         boolean ok = byCount[0] + byCount[4] == 0 && byCount[1] > 0 && byCount[2] > 0 && byCount[3] > 0
-                && sideBySide == 0 && winding == 0 && straight == 0 && otherLeaves == 0 && loosePersistence == 0;
-        lines.add(String.format("date palm shapes over %d rolls: trunks 1/2/3 = %d/%d/%d (other %d), trunk blocks side "
-                        + "by side %d, single trunks winding %d, single trunks without a slant %d, other leaves than "
-                        + "jungle %d, shapes without persistent leaves %d", rolls, byCount[1], byCount[2], byCount[3],
-                byCount[0] + byCount[4], sideBySide, winding, straight, otherLeaves, loosePersistence));
+                && sideBySide == 0 && winding == 0 && straight == 0 && otherLeaves == 0 && loosePersistence == 0
+                && bare == 0 && badFeet == 0;
+        lines.add(String.format("date palm shapes over %d rolls: trunks 1/2/3 = %d/%d/%d (other %d), feet not within a "
+                        + "2x2 square %d, trunk blocks side by side from layer 3 up %d, single trunks winding %d, single "
+                        + "trunks without a slant %d, their lean %.2f blocks on average, other leaves than jungle %d, "
+                        + "shapes without persistent leaves %d, date clusters without palm leaves right above %d", rolls,
+                byCount[1], byCount[2], byCount[3], byCount[0] + byCount[4], badFeet, sideBySide, winding, straight,
+                (double) lean / Math.max(1, byCount[1]), otherLeaves, loosePersistence, bare));
         return ok ? 0 : 1;
     }
 
@@ -904,16 +974,34 @@ final class DevSelfTest {
      * straight trunk keeps wood in its foot column, or all four of the 2x2 square, from the foot to the highest log);
      * the sizes spread; every tree has strands reaching down to one or two blocks above the ground, no leaf hangs
      * lower, and no two strand ends hang side by side or diagonally beside each other; all leaves are mangrove leaves.
+     * The trunks (see {@link #trunkKind}): no maze and no fault, 55-75 % bend, the rest a C, at least 40 (big: 60)
+     * different ones from the third layer up and none more than 15 % of the rolls. The first nine trunks of each
+     * size are written out for concept/render_selftest.py (willow_trunks.png).
      */
-    private static int willowShapes(List<String> lines) {
+    private static int willowShapes(Path out, List<String> lines) throws IOException {
         int failures = 0;
         for (int size = 1; size <= 2; size++) {
             int rolls = size == 1 ? 300 : 100, straight = 0, noStrand = 0, tooLow = 0, beside = 0, otherLeaves = 0;
-            int minH = 99, maxH = 0;
+            int minH = 99, maxH = 0, rimStrands = 0, innerStrands = 0, underStrands = 0;
+            int[] faults = new int[7];
+            Map<String, Integer> kinds = new LinkedHashMap<>(), forms = new HashMap<>();
             RandomSource r = RandomSource.create(size); // one source for all: small seeds in a row start alike
             for (int roll = 0; roll < rolls; roll++) {
-                Map<BlockPos, Shape.Cell> cells = (size == 1 ? TreeShapes.weepingWillow(r)
-                        : TreeShapes.largeWeepingWillow(r)).cells();
+                Shape shape = size == 1 ? TreeShapes.weepingWillow(r) : TreeShapes.largeWeepingWillow(r);
+                Map<BlockPos, Shape.Cell> cells = shape.cells();
+                rimStrands += shape.strandCounts()[0];
+                innerStrands += shape.strandCounts()[1];
+                underStrands += shape.strandCounts()[2];
+                int th = shape.trunkTop();
+                Set<BlockPos> trunk = joined(logs(cells), th);
+                kinds.merge(trunkKind(cells, trunk, th, size == 2, faults), 1, Integer::sum);
+                forms.merge(form(trunk, 2, th), 1, Integer::sum);
+                if (roll < 9) {
+                    StringBuilder json = new StringBuilder("[\n");
+                    trunk.forEach(p -> jsonLine(json, p.getX(), p.getY(), p.getZ(), cells.get(p).state()));
+                    Files.writeString(out.resolve("willow_trunk_roll_" + (size == 1 ? "small_" : "big_") + roll
+                            + ".json"), json.append("\n]\n"), StandardCharsets.UTF_8);
+                }
                 int top = 0, logTop = 0;
                 List<BlockPos> ends = new ArrayList<>(); // leaves one or two above the ground: the strands' ends
                 for (Map.Entry<BlockPos, Shape.Cell> e : cells.entrySet()) {
@@ -952,15 +1040,199 @@ final class DevSelfTest {
                 minH = Math.min(minH, top + 1);
                 maxH = Math.max(maxH, top + 1);
             }
+            int bends = kinds.getOrDefault("bend", 0), cs = kinds.getOrDefault("C", 0);
+            int most = forms.values().stream().max(Integer::compare).orElse(0);
             boolean ok = straight == 0 && noStrand == 0 && tooLow == 0 && beside == 0 && otherLeaves == 0
-                    && maxH - minH >= 6;
+                    && maxH - minH >= 6 && bends + cs == rolls && bends >= 0.55 * rolls && bends <= 0.75 * rolls
+                    && java.util.Arrays.stream(faults).sum() == 0 && forms.size() >= (size == 1 ? 40 : 60)
+                    && most <= 0.15 * rolls;
             failures += ok ? 0 : 1;
+            String name = size == 1 ? "weeping willow" : "big weeping willow";
             lines.add(String.format("%s shapes over %d rolls: straight trunks %d, height %d-%d, trees without strands "
-                            + "to the ground %d, leaves at y 0 %d, strand ends side by side %d, other leaves than mangrove %d",
-                    size == 1 ? "weeping willow" : "big weeping willow", rolls, straight, minH, maxH, noStrand, tooLow,
-                    beside / 2, otherLeaves));
+                            + "to the ground %d, leaves at y 0 %d, strand ends side by side %d, other leaves than mangrove "
+                            + "%d, strands per tree at the rim %.1f, further in %.1f (more than 3 in from the rim "
+                            + "%.1f)", name, rolls, straight, minH, maxH, noStrand, tooLow, beside / 2, otherLeaves,
+                    (double) rimStrands / rolls, (double) innerStrands / rolls, (double) underStrands / rolls));
+            lines.add(String.format("%s trunks over %d rolls: bend %d %%, C %d %%, maze (more than two moves or another "
+                            + "turn) %d; layers with too few or many blocks %d, blocks without wood on a face %d, "
+                            + "layers sharing under 3 blocks with the one below %d, blocks over one beside the foot "
+                            + "%d, top layers not plain or without the leader %d, thin diagonal bends %d, big C lanes "
+                            + "only shifted %d; different trunks %d, the most common "
+                            + "%d times", name, rolls, 100 * bends / rolls, 100 * cs / rolls, rolls - bends - cs,
+                    faults[0], faults[1], faults[2], faults[3], faults[4], faults[5], faults[6], forms.size(), most));
         }
         return failures;
+    }
+
+    /**
+     * Reads a willow trunk (its wood joined to the foot up to its top layer th) as a bend, a C or a maze, and counts
+     * its faults: 0 layers from y 1 holding fewer or more blocks than 1-3 (big: 4-6), 1 blocks without wood on a face,
+     * 2 big layers sharing fewer than three blocks with the one below, 3 big blocks further than a block beside the
+     * foot square, 4 a top layer that is not plain or has no leader on it, 5 a thin bend that moves diagonally (reads
+     * as a zigzag), 6 lanes of a big C along an axis that jump out and back without a layer of three blocks (a piece
+     * of trunk merely shifted). Its plain layers (one block, a 2x2 square on the big one) show where it stands; a
+     * bend moves over once or twice the same way, a C out and back.
+     */
+    private static String trunkKind(Map<BlockPos, Shape.Cell> cells, Set<BlockPos> trunk, int th, boolean big,
+                                    int[] faults) {
+        List<Set<BlockPos>> layers = new ArrayList<>();
+        for (int y = 0; y <= th; y++) {
+            layers.add(new HashSet<>());
+        }
+        trunk.forEach(p -> layers.get(p.getY()).add(new BlockPos(p.getX(), 0, p.getZ())));
+        List<BlockPos> stands = new ArrayList<>(List.of(BlockPos.ZERO)); // from the foot up, each change once
+        for (int y = 1; y <= th; y++) {
+            Set<BlockPos> layer = layers.get(y);
+            faults[0] += layer.size() < (big ? 4 : 1) || layer.size() > (big ? 6 : 3) ? 1 : 0;
+            if (big) {
+                Set<BlockPos> shared = new HashSet<>(layer);
+                shared.retainAll(layers.get(y - 1));
+                faults[2] += shared.size() < 3 ? 1 : 0;
+                for (BlockPos p : layer) {
+                    faults[3] += p.getX() < -1 || p.getX() > 2 || p.getZ() < -1 || p.getZ() > 2 ? 1 : 0;
+                }
+            }
+            BlockPos at = plainCorner(layer, big);
+            if (at != null && !at.equals(stands.getLast())) {
+                stands.add(at);
+            }
+            if (y == th) {
+                boolean led = at != null;
+                for (BlockPos p : layer) {
+                    led &= isLog(cells, p.above(th + 1));
+                }
+                faults[4] += led ? 0 : 1;
+            }
+        }
+        for (BlockPos p : trunk) {
+            faults[1] += java.util.Arrays.stream(Direction.values()).anyMatch(d -> isLog(cells, p.relative(d)))
+                    ? 0 : 1;
+        }
+        List<BlockPos> moves = new ArrayList<>();
+        for (int i = 1; i < stands.size(); i++) {
+            moves.add(stands.get(i).subtract(stands.get(i - 1)));
+        }
+        if (moves.size() == 1 || moves.size() == 2 && moves.get(0).equals(moves.get(1))) {
+            faults[5] += !big && moves.getFirst().getX() != 0 && moves.getFirst().getZ() != 0 ? 1 : 0;
+            return "bend";
+        }
+        if (moves.size() != 2 || !moves.get(0).equals(BlockPos.ZERO.subtract(moves.get(1)))) {
+            return "maze";
+        }
+        if (big && (moves.getFirst().getX() == 0 || moves.getFirst().getZ() == 0)) {
+            // out and back along an axis: each lane across the move holds three blocks in some layer
+            boolean alongX = moves.getFirst().getX() != 0;
+            for (int lane = 0; lane <= 1; lane++) {
+                int l = lane;
+                boolean soft = false;
+                for (int y = 2; y <= th; y++) {
+                    soft |= layers.get(y).stream().filter(p -> (alongX ? p.getZ() : p.getX()) == l).count() >= 3;
+                }
+                faults[6] += soft ? 0 : 1;
+            }
+        }
+        return "C";
+    }
+
+    /** Where a trunk stands in a plain layer (its one block, or its 2x2 square's corner), null for other layers. */
+    private static BlockPos plainCorner(Set<BlockPos> layer, boolean big) {
+        if (layer.size() != (big ? 4 : 1)) {
+            return null;
+        }
+        BlockPos c = layer.stream().min(Comparator.<BlockPos>comparingInt(p -> p.getX()).thenComparingInt(p -> p.getZ()))
+                .orElseThrow();
+        return !big || layer.containsAll(List.of(c.east(), c.south(), c.east().south())) ? c : null;
+    }
+
+    /**
+     * Each thin willow trunk the user rebuilt by hand (concept/reference/willow_trunk_small_*.json, layers 1 to the
+     * top) turns up among 20 000 rolled thin willows from one random source, up to a turn or a mirror.
+     */
+    private static int willowReferences(List<String> lines) throws IOException {
+        Path dir = FabricLoader.getInstance().getGameDir().resolve("../concept/reference");
+        Map<String, Integer> heights = Map.of("small_1", 5, "small_2", 9, "small_3", 9); // measured, PLAN-0.17.md E.1
+        Map<String, String> wanted = new LinkedHashMap<>();
+        for (String name : List.of("small_1", "small_2", "small_3")) {
+            Set<BlockPos> wood = new HashSet<>();
+            for (JsonElement e : JsonParser.parseString(Files.readString(dir.resolve("willow_trunk_" + name + ".json")))
+                    .getAsJsonArray()) {
+                JsonArray a = e.getAsJsonArray();
+                wood.add(new BlockPos(a.get(0).getAsInt(), a.get(1).getAsInt(), a.get(2).getAsInt()));
+            }
+            wanted.put(name, form(joined(wood, heights.get(name)), 1, heights.get(name)));
+        }
+        Map<String, Integer> found = new LinkedHashMap<>();
+        wanted.keySet().forEach(k -> found.put(k, 0));
+        RandomSource r = RandomSource.create(3);
+        long start = System.nanoTime();
+        for (int i = 0; i < 20000; i++) {
+            Shape shape = TreeShapes.weepingWillow(r);
+            String f = form(joined(logs(shape.cells()), shape.trunkTop()), 1, shape.trunkTop());
+            wanted.forEach((name, w) -> found.merge(name, w.equals(f) ? 1 : 0, Integer::sum));
+        }
+        lines.add(String.format("weeping willow trunks rebuilt by hand, found among 20000 rolls: %s (%.0f s)", found,
+                (System.nanoTime() - start) / 1e9));
+        return found.values().stream().allMatch(n -> n > 0) ? 0 : 1;
+    }
+
+    /** The positions of a shape's logs. */
+    private static Set<BlockPos> logs(Map<BlockPos, Shape.Cell> cells) {
+        Set<BlockPos> logs = new HashSet<>();
+        cells.forEach((p, c) -> {
+            if (c.kind() == Shape.Kind.LOG) {
+                logs.add(p);
+            }
+        });
+        return logs;
+    }
+
+    /** The blocks joined to 0, 0, 0 over faces, edges or corners, up to y top (0, 0, 0 itself included). */
+    private static Set<BlockPos> joined(Set<BlockPos> blocks, int top) {
+        Set<BlockPos> seen = new HashSet<>(List.of(BlockPos.ZERO));
+        List<BlockPos> todo = new ArrayList<>(seen);
+        while (!todo.isEmpty()) {
+            BlockPos p = todo.removeLast();
+            for (BlockPos q : BlockPos.betweenClosed(p.offset(-1, -1, -1), p.offset(1, 1, 1))) {
+                if (q.getY() <= top && blocks.contains(q) && seen.add(q.immutable())) {
+                    todo.add(q.immutable());
+                }
+            }
+        }
+        return seen;
+    }
+
+    /** A trunk's layers from..to as text, the same for two trunks that differ only by a turn or a mirror. */
+    private static String form(Set<BlockPos> trunk, int from, int to) {
+        String best = null;
+        for (int k = 0; k < 8; k++) {
+            List<int[]> cells = new ArrayList<>();
+            for (BlockPos p : trunk) {
+                int x = p.getX(), z = p.getZ();
+                for (int i = 0; i < k % 4; i++) {
+                    int nx = -z;
+                    z = x;
+                    x = nx;
+                }
+                if (p.getY() >= from && p.getY() <= to) {
+                    cells.add(new int[]{k >= 4 ? -x : x, p.getY(), z});
+                }
+            }
+            int minX = cells.stream().mapToInt(c -> c[0]).min().orElse(0);
+            int minZ = cells.stream().mapToInt(c -> c[2]).min().orElse(0);
+            String s = cells.stream().sorted(Comparator.<int[]>comparingInt(c -> c[1]).thenComparingInt(c -> c[0])
+                            .thenComparingInt(c -> c[2]))
+                    .map(c -> (c[0] - minX) + "," + c[1] + "," + (c[2] - minZ))
+                    .collect(java.util.stream.Collectors.joining(" "));
+            if (best == null || s.compareTo(best) < 0) {
+                best = s;
+            }
+        }
+        return best;
+    }
+
+    private static boolean isLog(Map<BlockPos, Shape.Cell> cells, BlockPos p) {
+        Shape.Cell c = cells.get(p);
+        return c != null && c.kind() == Shape.Kind.LOG;
     }
 
     /**
@@ -1008,7 +1280,7 @@ final class DevSelfTest {
                                     int trunkCorner, int minHeight) throws IOException {
         GreekTrees.Species species = species(name);
         int growths = 6, grown = 0, square = 0, minH = 99, maxH = 0, minW = 99, maxW = 0;
-        int decayed = 0, mismatched = 0, vines = 0, looseVines = 0, fruit = 0, looseFruit = 0, saplingsLeft = 0;
+        int decayed = 0, mismatched = 0, vines = 0, looseVines = 0, fruit = 0, looseFruit = 0, saplingsLeft = 0, bare = 0;
         int x0 = name.equals("date_palm") ? 1600 : 1900;
         for (int i = 0; i < growths; i++) {
             BlockPos pos = new BlockPos(x0, Y, i * 48);
@@ -1074,16 +1346,20 @@ final class DevSelfTest {
                 if (!level.getBlockState(p).canSurvive(level, p)) {
                     looseFruit++;
                 }
+                if (!level.getBlockState(p.above()).is(Blocks.JUNGLE_LEAVES)) {
+                    bare++;
+                }
             }
         }
         boolean willow = name.equals("weeping_willow");
         boolean ok = grown == growths && square == growths && saplingsLeft == 0 && minH > minHeight && decayed == 0
-                && mismatched == 0 && looseVines == 0 && looseFruit == 0 && (willow ? vines > 0 : fruit > 0);
+                && mismatched == 0 && looseVines == 0 && looseFruit == 0 && bare == 0 && (willow ? vines > 0 : fruit > 0);
         lines.add(String.format("%s from 4 saplings in a square: grown %d/%d, %s %d, saplings left %d, height %d-%d "
                         + "(want over %d), width %d-%d, leaf distance mismatches %d, decayed leaves %d, %s %d, "
-                        + "loose %d", name, grown, growths, trunkCorner == 1 ? "2x2 trunk" : "trunk on the corner", square,
-                saplingsLeft, minH, maxH, minHeight, minW, maxW, mismatched, decayed, willow ? "vines" : "date clusters",
-                willow ? vines : fruit, willow ? looseVines : looseFruit));
+                        + "loose %d%s", name, grown, growths, trunkCorner == 1 ? "2x2 trunk" : "trunk on the corner",
+                square, saplingsLeft, minH, maxH, minHeight, minW, maxW, mismatched, decayed,
+                willow ? "vines" : "date clusters", willow ? vines : fruit, willow ? looseVines : looseFruit,
+                willow ? "" : ", without palm leaves right above " + bare));
         return ok ? 0 : 1;
     }
 
@@ -1115,6 +1391,7 @@ final class DevSelfTest {
         return ok ? 0 : 1;
     }
 
+    /** The mod's own creative tab lists every sapling and every fruit. */
     private static int creativeTab(ServerLevel level, List<String> lines) {
         CreativeModeTab tab = BuiltInRegistries.CREATIVE_MODE_TAB.getValue(GreekTrees.id("main"));
         if (tab == null) {
@@ -1122,16 +1399,94 @@ final class DevSelfTest {
             return 1;
         }
         tab.buildContents(new CreativeModeTab.ItemDisplayParameters(level.enabledFeatures(), false, level.registryAccess()));
-        List<Item> want = new ArrayList<>(GreekTrees.SPECIES.stream().map(GreekTrees.Species::item).toList());
+        List<Item> want = new ArrayList<>(List.of(GreekTrees.GUIDE_BOOK));
+        want.addAll(GreekTrees.SPECIES.stream().map(GreekTrees.Species::item).toList());
         for (ItemLike fruit : GreekTrees.FRUIT) {
             want.add(fruit.asItem());
         }
         want.addAll(List.of(GreekTrees.OLIVE_PIT, GreekTrees.SHARPENED_OLIVE_PIT));
         List<Item> shown = tab.getDisplayItems().stream().map(ItemStack::getItem).toList();
         boolean ok = shown.containsAll(want) && shown.size() == want.size();
-        lines.add(String.format("creative tab: %d items, all saplings and fruit %s, title %s", shown.size(), ok,
-                tab.getDisplayName().getString()));
+        ok &= shown.getFirst() == GreekTrees.GUIDE_BOOK;
+        lines.add(String.format("creative tab: %d items, guide book first and all saplings and fruit %s, title %s",
+                shown.size(), ok, tab.getDisplayName().getString()));
         return ok ? 0 : 1;
+    }
+
+    /**
+     * The guide book. Recipe: a book and any of the saplings make it, and its recipe-book unlock exists. Gift: given
+     * twice to a new player, there is one book. Content: every tree page's recipe (read from the mod's recipe files)
+     * makes that tree's sapling from the same ingredients as the server's recipe, the sharpened pit's from two pits
+     * on top of each other, and every key the book uses is in both language files.
+     */
+    private static int guideBook(MinecraftServer server, ServerLevel level, List<String> lines) throws IOException {
+        int failures = 0;
+        int crafted = 0;
+        for (GreekTrees.Species s : GreekTrees.SPECIES) {
+            List<ItemStack> stacks = List.of(new ItemStack(Items.BOOK), new ItemStack(s.item()));
+            CraftingInput input = CraftingInput.of(2, 1, stacks);
+            if (server.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, level)
+                    .map(h -> h.value().assemble(input)).orElse(ItemStack.EMPTY).is(GreekTrees.GUIDE_BOOK)) {
+                crafted++;
+            }
+        }
+        boolean unlock = server.getAdvancements().get(GreekTrees.id("recipes/misc/guide_book")) != null;
+        if (crafted != GreekTrees.SPECIES.size() || !unlock) {
+            failures++;
+        }
+        lines.add(String.format("guide book recipe: a book and each sapling give the book %d/%d, unlock advancement %s",
+                crafted, GreekTrees.SPECIES.size(), unlock));
+
+        FakePlayer player = FakePlayer.get(level, new GameProfile(UUID.randomUUID(), "guide_book_gift"));
+        GuideBookItem.giveBookOnce(player);
+        GuideBookItem.giveBookOnce(player);
+        int books = 0;
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack stack = player.getInventory().getItem(i);
+            books += stack.is(GreekTrees.GUIDE_BOOK) ? stack.getCount() : 0;
+        }
+        boolean marked = player.hasAttached(GuideBookItem.GOT_BOOK);
+        if (books != 1 || !marked) {
+            failures++;
+        }
+        lines.add(String.format("guide book gift: given twice to a new player, books %d (want 1), marked %s", books,
+                marked));
+
+        List<GuideBook.Spread> spreads = GuideBook.spreads();
+        int trees = 0, matching = 0;
+        boolean pits = false;
+        Set<String> keys = new LinkedHashSet<>(List.of("item.greektrees.guide_book"));
+        for (GuideBook.Spread spread : spreads) {
+            keys.addAll(spread.keys());
+            if (spread instanceof GuideBook.Tree tree) {
+                trees++;
+                GuideBook.Recipe recipe = tree.recipe();
+                List<Item> in = recipe.grid().stream().filter(x -> !x.isEmpty()).map(ItemStack::getItem)
+                        .sorted(Comparator.comparing(Item::toString)).toList();
+                List<Item> want = RECIPES.get(tree.name()).stream().sorted(Comparator.comparing(Item::toString)).toList();
+                if (recipe.result().is(tree.sapling()) && in.equals(want)) {
+                    matching++;
+                }
+            } else if (spread instanceof GuideBook.Pits p) {
+                List<ItemStack> g = p.recipe().grid();
+                pits = p.recipe().result().is(GreekTrees.SHARPENED_OLIVE_PIT) && g.stream().filter(x -> !x.isEmpty()).count() == 2
+                        && g.get(1).is(GreekTrees.OLIVE_PIT) && g.get(4).is(GreekTrees.OLIVE_PIT);
+            }
+        }
+        List<String> missing = new ArrayList<>();
+        for (String language : List.of("en_us", "de_de")) {
+            JsonObject lang = JsonParser.parseString(Files.readString(FabricLoader.getInstance()
+                    .getModContainer(GreekTrees.MOD_ID).orElseThrow().findPath("assets/greektrees/lang/" + language + ".json")
+                    .orElseThrow(), StandardCharsets.UTF_8)).getAsJsonObject();
+            keys.stream().filter(k -> !lang.has(k)).forEach(k -> missing.add(language + ":" + k));
+        }
+        if (trees != GreekTrees.SPECIES.size() || matching != trees || !pits || !missing.isEmpty()) {
+            failures++;
+        }
+        lines.add(String.format("guide book content: %d spreads, tree pages %d, recipes as the server's %d/%d, sharpened "
+                        + "pit recipe %s, keys %d, missing in the language files %s", spreads.size(), trees, matching,
+                trees, pits, keys.size(), missing.isEmpty() ? "none" : missing));
+        return failures;
     }
 
     private static GreekTrees.Species species(String name) {

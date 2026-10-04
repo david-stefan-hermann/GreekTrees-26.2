@@ -14,6 +14,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.registry.CompostableRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -103,6 +104,9 @@ public final class GreekTrees implements ModInitializer {
     /** The three kinds of mulberry tree, by their twigs. */
     public static final Block[] MULBERRY_TWIGS = {BLACK_MULBERRY_TWIG, WHITE_MULBERRY_TWIG, RED_MULBERRY_TWIG};
 
+    /** Every tree in one book; crafted from a book and any of the saplings, and given once to every player. */
+    public static final Item GUIDE_BOOK = item("guide_book", props -> new GuideBookItem(props.stacksTo(1)));
+
     /** The fruit in the order of the trees. */
     public static final ItemLike[] FRUIT = {OLIVE, FIG, ARBUTUS_BERRY, DATE, BLACK_MULBERRY, WHITE_MULBERRY,
             RED_MULBERRY};
@@ -166,6 +170,7 @@ public final class GreekTrees implements ModInitializer {
                 .icon(() -> new ItemStack(SPECIES.get(1).item()))
                 .title(Component.translatable("itemGroup.greektrees"))
                 .displayItems((params, out) -> {
+                    out.accept(GUIDE_BOOK);
                     for (ItemLike sapling : saplings) {
                         out.accept(sapling);
                     }
@@ -192,6 +197,7 @@ public final class GreekTrees implements ModInitializer {
                 OLIVE_PIT}) {
             CompostableRegistry.INSTANCE.add(fruit, 0.3f); // like sweet berries and seeds
         }
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> GuideBookItem.giveBookOnce(handler.player));
         DevSelfTest.register();
     }
 
